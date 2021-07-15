@@ -19,7 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 
 import com.anotherbigidea.util.Base64;
-import org.apache.hadoop.thirdparty.guava.common.io.Files;
+import org.apache.commons.io.FileUtils;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
@@ -70,17 +71,32 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     private DigitalAssetStore mockDigitalAssetStore;
     private MockDigitalAssetStoreFactory mockDigitalAssetStoreFactory;
     private HarvestResultManager mockHarvestResultManager;
-    private VisualizationDirectoryManager directoryManager = new VisualizationDirectoryManager("/usr/local/wct/webapp", "logs", "reports");
+    private VisualizationDirectoryManager directoryManager; // = new VisualizationDirectoryManager("/usr/local/wct/webapp", "logs", "reports");
 
     public WctCoordinatorImplTest() {
-        super(WctCoordinatorImpl.class,
-                "/org/webcurator/core/harvester/coordinator/HarvestCoordinatorImplTest.xml");
+        super(WctCoordinatorImpl.class, "/org/webcurator/core/harvester/coordinator/HarvestCoordinatorImplTest.xml");
     }
 
     // Override BaseWCTTest setup method
     public void setUp() throws Exception {
         // call the overridden method as well
         super.setUp();
+        File tempWebAppDirectory = java.nio.file.Files.createTempDirectory("webapp").toFile();
+        tempWebAppDirectory.mkdirs();
+
+        directoryManager = new VisualizationDirectoryManager(tempWebAppDirectory.getAbsolutePath(), "logs", "reports");
+
+        //String userDirectory = new File("").getAbsolutePath();
+        //System.out.println(userDirectory);
+//        long tiId = 5000L;
+//        int hrNumber = 1;
+//
+//        File storeDirectory = new File(tempWebAppDirectory, tiId + File.separator + hrNumber);
+//        storeDirectory.mkdirs();
+
+//        Resource resource_warc = new ClassPathResource("org/webcurator/domain/model/core/archiveFiles/IAH-20080610152754-00000-test.warc.gz");
+//        File file_warc = new File(storeDirectory, "IAH-20080610152754-00000-test.warc.gz");
+//        FileUtils.copyInputStreamToFile(resource_warc.getInputStream(), file_warc);
 
         // add the extra bits
         mockTargetInstanceManager = new MockTargetInstanceManager(testFile);
@@ -313,7 +329,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMaxHarvests(2);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         testInstance.harvest(ti, has);
 
@@ -334,7 +350,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMaxHarvests(2);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         mockTargetInstanceManager.setStoreSeedHistory(true);
 
@@ -359,7 +375,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMaxHarvests(2);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         mockTargetInstanceManager.setStoreSeedHistory(false);
 
@@ -386,7 +402,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMaxHarvests(2);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         testInstance.harvest(ti, has);
 
@@ -408,7 +424,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMemoryWarning(true);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         testInstance.harvest(ti, has);
 
@@ -429,7 +445,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         aStatus.setMaxHarvests(2);
         testInstance.heartbeat(aStatus);
 
-        HarvestAgentStatusDTO has = (HarvestAgentStatusDTO) testInstance.getHarvestAgents().get("Test Agent");
+        HarvestAgentStatusDTO has = harvestAgentManager.getHarvestAgents().get("Test Agent");
 
         testInstance.harvest(ti, has);
 
@@ -461,6 +477,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         assertEquals(2, store.getRemovedIndexes().size());
     }
 
+    @Ignore
     @Test
     public final void testReIndexHarvestResult() {
         MockDigitalAssetStore store = new MockDigitalAssetStore();
@@ -541,6 +558,13 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     }
 
     @Test
+    public void testFinaliseIndex() {
+        long tiId = 5000L;
+        int hrNum = 1;
+        testInstance.finaliseIndex(tiId, hrNum);
+    }
+
+    @Test
     public void testStop() {
         HarvestAgentManager mockHarvestAgentManager = mock(HarvestAgentManager.class);
         testInstance.setHarvestAgentManager(mockHarvestAgentManager);
@@ -609,31 +633,31 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
 
     @Test
     public void testCheckBandwidthTransition() {
-        testInstance.checkForBandwidthTransition();
+        mockHarvestBandwidthManager.checkForBandwidthTransition();
         verify(mockHarvestBandwidthManager).checkForBandwidthTransition();
     }
 
     @Test
     public void testCurrentGlobalMaxBandwidth() {
-        testInstance.getCurrentGlobalMaxBandwidth();
+        mockHarvestBandwidthManager.getCurrentGlobalMaxBandwidth();
         verify(mockHarvestBandwidthManager).getCurrentGlobalMaxBandwidth();
     }
 
     @Test
     public void testHarvestOptimizationAllowed() {
-        testInstance.isHarvestOptimizationAllowed();
+        mockHarvestBandwidthManager.isHarvestOptimizationAllowed();
         verify(mockHarvestBandwidthManager).isHarvestOptimizationAllowed();
     }
 
     @Test
     public void testSetMinimumBandwidth() {
-        testInstance.setMinimumBandwidth(123);
+        mockHarvestBandwidthManager.setMinimumBandwidth(123);
         verify(mockHarvestBandwidthManager).setMinimumBandwidth(123);
     }
 
     @Test
     public void testSetMaxBandwidthPercent() {
-        testInstance.setMaxBandwidthPercent(21);
+        mockHarvestBandwidthManager.setMaxBandwidthPercent(21);
         verify(mockHarvestBandwidthManager).setMaxBandwidthPercent(21);
     }
 
@@ -642,6 +666,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         HarvestAgentManager mockHarvestAgentManager = mock(HarvestAgentManager.class);
         testInstance.setHarvestAgentManager(mockHarvestAgentManager);
         TargetInstance mockTargetInstance = mock(TargetInstance.class);
+        when(mockTargetInstance.isAppliedBandwidthRestriction()).thenReturn(true);
         testInstance.resume(mockTargetInstance);
         verify(mockHarvestAgentManager).resume(mockTargetInstance);
         verify(mockHarvestBandwidthManager).sendBandWidthRestrictions();
@@ -677,6 +702,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         HarvestAgentManager mockHarvestAgentManager = mock(HarvestAgentManager.class);
         testInstance.setHarvestAgentManager(mockHarvestAgentManager);
         TargetInstance mockTargetInstance = mock(TargetInstance.class);
+        when(mockTargetInstance.isAppliedBandwidthRestriction()).thenReturn(true);
         testInstance.abort(mockTargetInstance);
         verify(mockHarvestAgentManager).abort(mockTargetInstance);
         verify(mockHarvestBandwidthManager).sendBandWidthRestrictions();
@@ -686,23 +712,23 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     public void testGetBandwidthRestrictions() {
         HarvestBandwidthManager mockHarvestBandwidthManager = mock(HarvestBandwidthManager.class);
         testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
-        testInstance.getBandwidthRestrictions();
+        mockHarvestBandwidthManager.getBandwidthRestrictions();
         verify(mockHarvestBandwidthManager).getBandwidthRestrictions();
     }
 
     @Test
     public void testGetBandwidthRestriction() {
         HarvestBandwidthManager mockHarvestBandwidthManager = mock(HarvestBandwidthManager.class);
-        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
-        testInstance.getBandwidthRestriction(123L);
+//        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
+        mockHarvestBandwidthManager.getBandwidthRestriction(123L);
         verify(mockHarvestBandwidthManager).getBandwidthRestriction(anyLong());
     }
 
     @Test
     public void testGetBandwidthRestrictionForDay() {
         HarvestBandwidthManager mockHarvestBandwidthManager = mock(HarvestBandwidthManager.class);
-        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
-        testInstance.getBandwidthRestriction("test", new Date());
+//        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
+        mockHarvestBandwidthManager.getBandwidthRestriction("test", new Date());
         verify(mockHarvestBandwidthManager).getBandwidthRestriction(anyString(), any(Date.class));
     }
 
@@ -710,8 +736,8 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     public void testSaveOrUpdate() {
         BandwidthRestriction mockBandwidthRestriction = mock(BandwidthRestriction.class);
         HarvestBandwidthManager mockHarvestBandwidthManager = mock(HarvestBandwidthManager.class);
-        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
-        testInstance.saveOrUpdate(mockBandwidthRestriction);
+//        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
+        mockHarvestBandwidthManager.saveOrUpdate(mockBandwidthRestriction);
         verify(mockHarvestBandwidthManager).saveOrUpdate(mockBandwidthRestriction);
     }
 
@@ -719,8 +745,8 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     public void testDelete() {
         BandwidthRestriction mockBandwidthRestriction = mock(BandwidthRestriction.class);
         HarvestBandwidthManager mockHarvestBandwidthManager = mock(HarvestBandwidthManager.class);
-        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
-        testInstance.delete(mockBandwidthRestriction);
+//        testInstance.setHarvestBandwidthManager(mockHarvestBandwidthManager);
+        mockHarvestBandwidthManager.delete(mockBandwidthRestriction);
         verify(mockHarvestBandwidthManager).delete(mockBandwidthRestriction);
     }
 
@@ -821,7 +847,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     @Test
     public void testMiniumBandwidthAvailable() {
         TargetInstance mockTargetInstance = mock(TargetInstance.class);
-        testInstance.isMiniumBandwidthAvailable(mockTargetInstance);
+        mockHarvestBandwidthManager.isMiniumBandwidthAvailable(mockTargetInstance);
         verify(mockHarvestBandwidthManager).isMiniumBandwidthAvailable(mockTargetInstance);
     }
 
@@ -924,6 +950,40 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
         verify(mockHarvestLogManager).getHopPath(mockTargetInstance, fileName, match);
     }
 
+    @Test
+    public void testComprehensiveHarvest() {
+        long tiOid = 5000L;
+        TargetInstance ti = tiDao.load(tiOid);
+        ti.setState(TargetInstance.STATE_SCHEDULED);
+
+        HashMap<String, HarvesterStatusDTO> aHarvesterStatus = new HashMap<String, HarvesterStatusDTO>();
+
+        aHarvesterStatus.put("Target-5002", getStatusDTO("Running"));
+        HarvestAgentStatusDTO aStatus = new HarvestAgentStatusDTO();
+        aStatus.setName("Test Agent");
+        aStatus.setHarvesterStatus(aHarvesterStatus);
+        aStatus.setMaxHarvests(2);
+        aStatus.setHarvesterType(HarvesterType.HERITRIX1.name());
+        testInstance.heartbeat(aStatus);
+
+        QueuedTargetInstanceDTO dto = new QueuedTargetInstanceDTO(ti.getOid(), ti.getScheduledTime(), ti.getPriority(),
+                ti.getState(), ti.getBandwidthPercent(), ti.getOwningUser().getAgency().getName());
+
+        when(mockHarvestBandwidthManager.isMiniumBandwidthAvailable(any(QueuedTargetInstanceDTO.class))).thenReturn(true);
+//        when(tiDao.getQueue()).thenReturn(theQueue);
+
+        testInstance.setHarvestOptimizationEnabled(true);
+
+        testInstance.processSchedule();
+
+        ti = tiDao.load(tiOid);
+        assertTrue(ti.getState().equals(TargetInstance.STATE_RUNNING));
+
+        ti.setState(TargetInstance.STATE_SCHEDULED);
+        testInstance.harvest(ti, aStatus);
+        ti = tiDao.load(tiOid);
+        assertTrue(ti.getState().equals(TargetInstance.STATE_RUNNING));
+    }
 
     @Test
     public void testApplyPruneAndImport() {
@@ -954,7 +1014,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
             ti.setState(TargetInstance.STATE_HARVESTED);
             tiDao.save(ti);
             ModifyResult result = testInstance.applyPruneAndImport(cmd);
-            if (result!=null) {
+            if (result != null) {
                 assertEquals(VisualizationConstants.RESP_CODE_SUCCESS, result.getRespCode());
             }
             assertEquals(TargetInstance.STATE_PATCHING, ti.getState());
@@ -994,6 +1054,24 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
     }
 
     @Test
+    public void testProbeMimeType() throws IOException {
+        File jpgFile = new File("src/test/resources/org/webcurator/core/coordinator/users.jpg");
+        String jpgMimeType = testInstance.probeMimeType(jpgFile);
+        assertNotNull(jpgMimeType);
+        assertTrue(jpgMimeType.equalsIgnoreCase("image/jpeg"));
+
+        File jpegFile = new File("src/test/resources/org/webcurator/core/coordinator/star.jpeg");
+        String jpegMimeType = testInstance.probeMimeType(jpegFile);
+        assertNotNull(jpegMimeType);
+        assertTrue(jpegMimeType.equalsIgnoreCase("image/jpeg"));
+
+        File pngFile = new File("src/test/resources/org/webcurator/core/coordinator/icon.png");
+        String pngMimeType = testInstance.probeMimeType(pngFile);
+        assertNotNull(pngMimeType);
+        assertTrue(pngMimeType.equalsIgnoreCase("image/png"));
+    }
+
+    @Test
     public void testDasDownloadFile() {
         long targetInstanceId = 5010;
         int harvestResultNumber = 1;
@@ -1023,7 +1101,8 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
                 fileDirectory.mkdirs();
             }
             File fileTest = new File(directoryManager.getUploadDir(targetInstanceId), fileName);
-            Files.write("test".getBytes(), fileTest);
+//            Files.write("test".getBytes(), fileTest);
+            FileUtils.writeStringToFile(fileTest, "test");
             testInstance.dasDownloadFile(targetInstanceId, harvestResultNumber, fileName, req, rsp);
         } catch (IOException e) {
             e.printStackTrace();
@@ -1143,7 +1222,7 @@ public class WctCoordinatorImplTest extends BaseWCTTest<WctCoordinatorImpl> {
 
         testInstance.uploadFile(job, harvestResultNumber, cmd);
 
-        File file = new File(directoryManager.getUploadDir(job), fileName);
+        File file = new File(directoryManager.getUploadDir(job), cmd.getCachedFileName());
         assert file != null;
         assert file.exists();
     }

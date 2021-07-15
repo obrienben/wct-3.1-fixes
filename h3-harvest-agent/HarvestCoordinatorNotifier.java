@@ -47,17 +47,17 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
      */
     public String attemptRecovery = "false";
 
-    public HarvestCoordinatorNotifier(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
-        super(scheme, host, port, restTemplateBuilder);
+    public HarvestCoordinatorNotifier(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
+        super(baseUrl, restTemplateBuilder);
     }
 
     /* (non-Javadoc)
      * @see org.webcurator.core.harvester.coordinator.HarvestAgentListener#heartbeat(org.webcurator.core.harvester.agent.HarvestAgentStatus)
      */
 
-    public void heartbeat(HarvestAgentStatusDTO aStatus) {
+    public void heartbeat(HarvestAgentStatusDTO aStatus){
         try {
-            log.debug("WCT: Start of heartbeat");
+            log.info("WCT: Start of heartbeat");
 
             RestTemplate restTemplate = restTemplateBuilder.build();
 
@@ -65,8 +65,9 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
 
             HttpEntity<String> request = this.createHttpRequestEntity(aStatus);
 
-            restTemplate.postForObject(uri, request, Void.class);
-            log.debug("WCT: End of heartbeat");
+            restTemplate.postForObject(uri, request, String.class);
+            log.info("WCT: End of heartbeat");
+
         } catch (Exception ex) {
             log.error("Heartbeat Notification failed : " + ex.getMessage(), ex);
         }
@@ -84,7 +85,7 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
                 UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.RECOVERY));
                 URI uri = uriComponentsBuilder.buildAndExpand().toUri();
 
-                restTemplate.postForObject(uri, request, Void.class);
+                restTemplate.postForObject(uri, request, String.class);
                 log.debug("WCT: End of requestRecovery");
 
                 setAttemptRecovery("false");
@@ -93,6 +94,8 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
             log.error("Recovery Request failed.");
 
             throw new HttpClientErrorException(ex.getStatusCode());
+        } catch (Exception ex) {
+            log.error("Recovery Request failed.");
         }
     }
 
@@ -101,7 +104,7 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
      */
     public void harvestComplete(HarvestResultDTO aResult) {
         try {
-            log.debug("WCT: Start of harvestComplete");
+            log.info("WCT: Start of harvestComplete");
 
             HttpEntity<String> request = this.createHttpRequestEntity(aResult);
 
@@ -109,9 +112,9 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
             UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.HARVEST_COMPLETE));
             URI uri = uriComponentsBuilder.buildAndExpand().toUri();
 
-            restTemplate.postForObject(uri, request, Void.class);
+            restTemplate.postForObject(uri, request, String.class);
 
-            log.debug("WCT: End of HarvestComplete");
+            log.info("WCT: End of HarvestComplete");
         } catch (Exception ex) {
             log.error("Harvest Complete Notification failed : " + ex.getMessage(), ex);
             throw new WCTRuntimeException(ex);
@@ -131,7 +134,7 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
                     .queryParam("notification-category", notificationCategory)
                     .queryParam("message-type", aMessageType);
 
-            restTemplate.postForObject(uriComponentsBuilder.buildAndExpand().toUri(), null, Void.class);
+            restTemplate.postForObject(uriComponentsBuilder.buildAndExpand().toUri(), null, String.class);
 
             log.debug("WCT: End of notification");
         } catch (Exception ex) {

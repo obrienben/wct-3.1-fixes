@@ -13,6 +13,10 @@ import org.webcurator.core.scheduler.TargetInstanceManager;
 import org.webcurator.domain.model.core.*;
 import org.webcurator.domain.model.core.harvester.agent.HarvestAgentStatusDTO;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
 /**
  * The Server side implmentation of the HarvestAgentListener. This Service is deployed on the core and is used by the agents to send
  * messages to the core.
@@ -24,7 +28,7 @@ public class HarvestAgentListenerService implements HarvestAgentListener, CheckN
     /**
      * the logger.
      */
-    private static Logger log = LoggerFactory.getLogger(HarvestAgentListenerService.class);
+    private static final Logger log = LoggerFactory.getLogger(HarvestAgentListenerService.class);
     /**
      * the harvest coordinator to delegate to.
      */
@@ -44,14 +48,14 @@ public class HarvestAgentListenerService implements HarvestAgentListener, CheckN
      */
     @PostMapping(path = WctCoordinatorPaths.HEARTBEAT)
     public void heartbeat(@RequestBody HarvestAgentStatusDTO aStatus) {
-        log.info("Received heartbeat from {}://{}:{}", aStatus.getScheme(), aStatus.getHost(), aStatus.getPort());
+        log.info("Received heartbeat from {}}", aStatus.getBaseUrl());
         wctCoordinator.heartbeat(aStatus);
     }
 
     @RequestMapping(path = WctCoordinatorPaths.RECOVERY, method = {RequestMethod.POST, RequestMethod.GET})
     public void requestRecovery(@RequestBody HarvestAgentStatusDTO aStatus) {
-        log.info("Received recovery request from {}://{}:{}", aStatus.getScheme(), aStatus.getHost(), aStatus.getPort());
-        wctCoordinator.recoverHarvests(aStatus.getScheme(), aStatus.getHost(), aStatus.getPort(), aStatus.getService());
+        log.info("Received recovery request from {}", aStatus.getBaseUrl());
+        wctCoordinator.recoverHarvests(aStatus.getBaseUrl(), aStatus.getService());
     }
 
     /*
@@ -90,8 +94,4 @@ public class HarvestAgentListenerService implements HarvestAgentListener, CheckN
         log.info("Received Notification {} {}", aSubject, aMessage);
         wctCoordinator.notification(aSubject, notificationCategory, aMessage);
     }
-
-
-
-
 }

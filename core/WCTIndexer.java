@@ -30,12 +30,8 @@ public class WCTIndexer extends IndexerBase {
     private boolean doCreate = false;
     private BDBNetworkMapPool pool;
 
-    public WCTIndexer(RestTemplateBuilder restTemplateBuilder) {
-        super(restTemplateBuilder);
-    }
-
-    public WCTIndexer(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
-        super(scheme, host, port, restTemplateBuilder);
+    public WCTIndexer(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
+        super(baseUrl, restTemplateBuilder);
     }
 
     protected WCTIndexer(WCTIndexer original) {

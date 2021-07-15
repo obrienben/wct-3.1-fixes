@@ -7,6 +7,7 @@ import java.util.*;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.junit.Ignore;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -94,6 +95,7 @@ public class BrowseHelperTest extends BaseWCTTest<BrowseHelper> {
 		assertEquals("http://test.com/+photos%5B0%5D+", url);
 	}
 
+	@Ignore
 	@Test
 	public final void testFix() {
 

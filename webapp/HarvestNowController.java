@@ -78,7 +78,7 @@ public class HarvestNowController {
     private Log log;
 
     @Autowired
-    private HarvestNowValidator validator;
+    private HarvestNowValidator harvestNowValidator;
 
     /**
      * Constructor to set the command class for this controller.
@@ -101,10 +101,10 @@ public class HarvestNowController {
     protected ModelAndView processFormSubmission(@ModelAttribute("targetInstanceCommand") TargetInstanceCommand cmd,
                                                  BindingResult bindingResult, HttpServletRequest aReq)
             throws Exception {
-        validator.validate(cmd, bindingResult);
+        harvestNowValidator.validate(cmd, bindingResult);
 
         String targetUrl = "";
-        if (cmd.getHarvestResultId() <= 0) {
+        if (cmd.getHarvestResultId() == null || cmd.getHarvestResultId() <= 0) {
             targetUrl = Constants.CNTRL_TI_QUEUE;
         } else {
             targetUrl = String.format("curator/target/target-instance.html?targetInstanceId=%d&cmd=edit&init_tab=RESULTS", cmd.getTargetInstanceId());
@@ -167,7 +167,7 @@ public class HarvestNowController {
             mav.addObject(Constants.GBL_MESSAGES, messageSource.getMessage("target.instance.agent.notaccept", new Object[]{ti.getOid(), has.getName()}, Locale.getDefault()));
         } else {
             try {
-                if (cmd.getHarvestResultId() <= 0) {
+                if (cmd.getHarvestResultId()==null || cmd.getHarvestResultId() <= 0) {
                     wctCoordinator.harvest(ti, has);
                 } else {
                     HarvestResult hr = targetInstanceDAO.getHarvestResult(cmd.getHarvestResultId());
@@ -197,7 +197,7 @@ public class HarvestNowController {
         this.messageSource = messageSource;
     }
 
-    public void setValidator(HarvestNowValidator validator) {
-        this.validator = validator;
+    public void setHarvestNowValidator(HarvestNowValidator harvestNowValidator) {
+        this.harvestNowValidator = harvestNowValidator;
     }
 }

@@ -90,7 +90,7 @@ public class ArcDigitalAssetStoreServiceTest extends BaseWCTStoreTest<ArcDigital
         super.setUp();
         BDBNetworkMapPool bdbNetworkMapPool = new BDBNetworkMapPool(baseDir, dbVersion);
         VisualizationDirectoryManager directoryManager = new VisualizationDirectoryManager(baseDir, "logs", "report");
-        WctCoordinatorClient wctCoordinatorClient = new WctCoordinatorClient("http", "localhost", 8080, new RestTemplateBuilder());
+        WctCoordinatorClient wctCoordinatorClient = new WctCoordinatorClient("http://localhost:8080/", new RestTemplateBuilder());
         NetworkMapClient networkMapClient = new NetworkMapClientLocal(bdbNetworkMapPool, null);
         VisualizationProcessorManager processorManager = new VisualizationProcessorManager(directoryManager, wctCoordinatorClient, 1);
         testInstance.setBaseDir(baseDir);
@@ -248,5 +248,21 @@ public class ArcDigitalAssetStoreServiceTest extends BaseWCTStoreTest<ArcDigital
                 log.debug("Failed to delete Directory: " + directory.getAbsolutePath());
             }
         }
+    }
+
+    @Ignore
+    @Test
+    public void testGetDownloadFileURL() {
+        try {
+            File f = File.createTempFile("download",".temp");
+            f = testInstance.getDownloadFileURL("team.png", f);
+            assert f.exists();
+
+            f.delete();
+        } catch (IOException e) {
+            e.printStackTrace();
+            assert false;
+        }
+
     }
 }

@@ -44,7 +44,7 @@ public class TargetInstanceAnnotationHandlerTest extends BaseWCTTest<TargetInsta
 	public TargetInstanceAnnotationHandlerTest()
 	{
 		super(TargetInstanceAnnotationHandler.class,
-                "/org/webcurator/ui/target/controller/TargetInstanceAnnotationHandlerTest.xml");
+				"/org/webcurator/ui/target/controller/TargetInstanceAnnotationHandlerTest.xml");
 
 	}
 
@@ -156,7 +156,7 @@ public class TargetInstanceAnnotationHandlerTest extends BaseWCTTest<TargetInsta
 
 			Tab currentTab = tabs.get(1);
 			aCmd.setCmd(TargetInstanceCommand.ACTION_EDIT);
-            BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+			BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 
 			ModelAndView mav = testInstance.preProcessNextTab(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 			assertNotNull(mav);
@@ -196,7 +196,7 @@ public class TargetInstanceAnnotationHandlerTest extends BaseWCTTest<TargetInsta
 			Tab currentTab = tabs.get(1);
 			aCmd.setCmd(TargetInstanceCommand.ACTION_ADD_NOTE);
 			aCmd.setNote("A note");
-            BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+			BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 
 			int numAnnotations = targetInstance.getAnnotations().size();
 
@@ -280,7 +280,7 @@ public class TargetInstanceAnnotationHandlerTest extends BaseWCTTest<TargetInsta
 		Tab currentTab = tabs.get(1);
 		aCmd.setCmd(TargetInstanceCommand.ACTION_ADD_NOTE);
 		aCmd.setNote("A note");
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 
 		List<Annotation> resultAnnotations = targetInstance.getAnnotations();
 		int numAnnotations = resultAnnotations.size();
@@ -290,6 +290,4 @@ public class TargetInstanceAnnotationHandlerTest extends BaseWCTTest<TargetInsta
 		Annotation resultAnnotation = resultAnnotations.get(resultAnnotations.size()-1);
 		assertEquals("A note", resultAnnotation.getNote());
 	}
-
-
 }

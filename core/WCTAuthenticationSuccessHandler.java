@@ -88,7 +88,7 @@ public class WCTAuthenticationSuccessHandler extends SavedRequestAwareAuthentica
 
             // check to see if the user should change their password
             if (wctUser.isForcePasswordChange() && !wctUser.isExternalAuth()) {
-                response.sendRedirect("/" + Constants.CNTRL_RESET_PWD);
+                response.sendRedirect(Constants.CNTRL_RESET_PWD);
                 auditor.audit(User.class.getName(),wctUser.getOid(),Auditor.ACTION_FORCE_PWD_CHANGE,"User has been forced to change password");
             } else {
                 String mode=request.getHeader("Request-Mode");

@@ -2,7 +2,7 @@
 <%@ page import="org.webcurator.domain.model.core.HarvestResult" %>
 
 <div id="resultsTable">
-    <iframe class="content-window-normal-screen" src='/spa/tools/patching-view-hr.html?targetInstanceOid=${ti.oid}&harvestResultId=${hr.oid}&harvestNumber=${hr.harvestNumber}'></iframe>
+    <iframe class="content-window-normal-screen" src='spa/tools/patching-view-hr.html?targetInstanceOid=${ti.oid}&harvestResultId=${hr.oid}&harvestNumber=${hr.harvestNumber}'></iframe>
 
 	<table width="100%" cellpadding="2" cellspacing="0" border="0">
         <tr>

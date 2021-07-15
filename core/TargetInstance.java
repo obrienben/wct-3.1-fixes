@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import org.hibernate.annotations.Formula;
+import org.webcurator.core.harvester.HarvesterType;
 import org.webcurator.core.notification.UserInTrayResource;
 import org.webcurator.core.util.PatchUtil;
 import org.webcurator.domain.UserOwnable;
@@ -476,7 +477,7 @@ public class TargetInstance implements Annotatable, Overrideable, UserInTrayReso
     public List<HarvestResult> getDerivedHarvestResults(int harvestResultNumber) {
         List<HarvestResult> list = new ArrayList<>();
         for (HarvestResult hr : harvestResults) {
-            if (hr.getDerivedFrom() != null && hr.getDerivedFrom() == harvestResultNumber) {
+            if (hr != null && hr.getDerivedFrom() != null && hr.getDerivedFrom() == harvestResultNumber) {
                 list.add(hr);
             }
         }
@@ -521,7 +522,7 @@ public class TargetInstance implements Annotatable, Overrideable, UserInTrayReso
         List<HarvestResult> results = getHarvestResults(); //Trigger hibernate fetch if necessary
         if (results == null) return null;
         for (HarvestResult result : results) {
-            if (harvestNumber == result.getHarvestNumber()) {
+            if (result != null && harvestNumber == result.getHarvestNumber()) {
                 return result;
             }
         }
@@ -1345,13 +1346,28 @@ public class TargetInstance implements Annotatable, Overrideable, UserInTrayReso
         }
 
         for (HarvestResult hr : harvestResults) {
-            if (hr.getState() == HarvestResult.STATE_CRAWLING
+            if ((hr != null) && (hr.getState() == HarvestResult.STATE_CRAWLING
                     || hr.getState() == HarvestResult.STATE_MODIFYING
-                    || hr.getState() == HarvestResult.STATE_INDEXING) {
+                    || hr.getState() == HarvestResult.STATE_INDEXING)) {
                 list.add(hr);
             }
         }
 
         return list;
+    }
+
+    @Transient
+    public boolean isAppliedBandwidthRestriction() {
+        Profile profile = this.getProfile();
+        if (profile == null) {
+            return true;
+        }
+
+        String harvestType = profile.getHarvesterType();
+        if (harvestType == null || harvestType.isEmpty()) {
+            return true;
+        }
+
+        return !harvestType.trim().equals(HarvesterType.HERITRIX3.name());
     }
 }

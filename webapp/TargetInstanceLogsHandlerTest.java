@@ -32,7 +32,7 @@ public class TargetInstanceLogsHandlerTest extends BaseWCTTest<TargetInstanceLog
 	public TargetInstanceLogsHandlerTest()
 	{
 		super(TargetInstanceLogsHandler.class,
-                "/org/webcurator/ui/target/controller/TargetInstanceLogsHandlerTest.xml");
+				"/org/webcurator/ui/target/controller/TargetInstanceLogsHandlerTest.xml");
 	}
 
 	public void setUp() throws Exception
@@ -101,7 +101,7 @@ public class TargetInstanceLogsHandlerTest extends BaseWCTTest<TargetInstanceLog
 
 		Tab currentTab = tabs.get(1);
 		aCmd.setCmd(TargetInstanceCommand.ACTION_EDIT);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		testInstance.processTab(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		// processTab currently returns with no processing done.
 		assertTrue(bindingResult.getAllErrors().size()==0);
@@ -133,7 +133,7 @@ public class TargetInstanceLogsHandlerTest extends BaseWCTTest<TargetInstanceLog
 		tc.setDefaultCommandClass(org.webcurator.ui.target.command.TargetInstanceCommand.class);
 
 		Tab currentTab = tabs.get(1);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		ModelAndView mav = testInstance.preProcessNextTab(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		assertTrue(mav != null);
 		assertNotNull(mav.getModel().get(TargetInstanceCommand.MDL_LOG_LIST));
@@ -180,7 +180,7 @@ public class TargetInstanceLogsHandlerTest extends BaseWCTTest<TargetInstanceLog
 
 		Tab currentTab = tabs.get(1);
 		aCmd.setCmd(TargetInstanceCommand.ACTION_EDIT);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		try {
 			ModelAndView mav = testInstance.processOther(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		}
@@ -210,5 +210,4 @@ public class TargetInstanceLogsHandlerTest extends BaseWCTTest<TargetInstanceLog
 		TargetInstanceManager targetInstanceManager = new MockTargetInstanceManager(testFile);
 		testInstance.setTargetInstanceManager(targetInstanceManager);
 	}
-
 }

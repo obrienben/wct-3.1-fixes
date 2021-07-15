@@ -155,13 +155,12 @@ public class QualityReviewToolController {
                 element.setBrowseUrl("curator/tools/browse/" + String.valueOf(result.getOid()) + "/?url=" + BrowseHelper.encodeUrl(seed.getSeed()));
             }
 
-            if (attr.enableAccessTool && attr.harvestResourceUrlMapper != null) {
+            if (attr.harvestResourceUrlMapper != null) {
                 //TODO
                 HarvestResourceDTO hRsr = new HarvestResourceDTO();
-                if (hRsr != null) {
+                hRsr.setName(seed.getSeed());
+                if (attr.enableAccessTool) {
                     element.setAccessUrl(attr.harvestResourceUrlMapper.generateUrl(result, hRsr));
-                } else {
-                    log.warn("Cannot find seed '" + seed.getSeed() + "' in harvest result (" + result.getOid() + ").");
                 }
             }
             seedMap.add(element);

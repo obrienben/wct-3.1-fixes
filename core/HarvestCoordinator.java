@@ -16,6 +16,7 @@
 package org.webcurator.core.harvester.coordinator;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 
@@ -29,6 +30,9 @@ import org.webcurator.domain.model.core.harvester.agent.HarvestAgentStatusDTO;
 import org.webcurator.domain.model.core.LogFilePropertiesDTO;
 import org.webcurator.domain.model.dto.QueuedTargetInstanceDTO;
 
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 /**
  * The HarvestCoordinator is responsible for managing the scheduling, monitoring and completion
  * of harvests.
@@ -37,6 +41,7 @@ import org.webcurator.domain.model.dto.QueuedTargetInstanceDTO;
  *
  * @author nwaight
  */
+
 public interface HarvestCoordinator extends HarvestAgentListener, HarvestCoordinatorDAO, CheckNotifier {
     /**
      * Process any TargetInstances that are ready to be processed.
@@ -85,13 +90,10 @@ public interface HarvestCoordinator extends HarvestAgentListener, HarvestCoordin
 
     /**
      * Send recover harvest information to Harvest Agent
-     *
-     * @param scheme
-     * @param host
-     * @param port
+     * @param baseUrl
      * @param service
      */
-    void recoverHarvests(String scheme, String host, int port, String service);
+    void recoverHarvests(String baseUrl, String service);
 
     /**
      * Allocate the target instance to the specified harvest agent.
@@ -296,7 +298,6 @@ public interface HarvestCoordinator extends HarvestAgentListener, HarvestCoordin
      * @return The log file.
      */
     File getLogfile(TargetInstance aTargetInstance, String aFilename);
-
 
     void pauseAgent(String agentName);
 

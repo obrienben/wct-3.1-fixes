@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.context.MockMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.servlet.ModelAndView;
@@ -31,6 +32,7 @@ import org.webcurator.domain.model.core.harvester.agent.HarvesterStatusDTO;
 import org.webcurator.test.BaseWCTTest;
 import org.webcurator.ui.target.command.TargetInstanceCommand;
 import org.webcurator.common.util.DateUtils;
+import org.webcurator.ui.target.validator.MockHarvestNowValidator;
 
 public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> {
 
@@ -39,11 +41,11 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 	public HarvestNowControllerTest()
 	{
 		super(HarvestNowController.class,
-                "/org/webcurator/ui/target/controller/HarvestNowControllerTest.xml");
+				"/org/webcurator/ui/target/controller/HarvestNowControllerTest.xml");
 
 	}
 
-    //Override BaseWCTTest setup method
+	//Override BaseWCTTest setup method
 	public void setUp() throws Exception {
 		//call the overridden method as well
 		super.setUp();
@@ -110,7 +112,8 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setCmd(TargetInstanceCommand.ACTION_HARVEST);
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
-        BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
 
 		ModelAndView mav = testInstance.processFormSubmission(aCmd, bindingResult, aReq);
 		assertTrue(mav != null);
@@ -140,7 +143,8 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setCmd(TargetInstanceCommand.ACTION_HARVEST);
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
-        BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
 
 		try
 		{
@@ -178,7 +182,8 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setCmd(TargetInstanceCommand.ACTION_HARVEST);
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
-        BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
+		ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
 
 		ModelAndView mav = testInstance.processFormSubmission(aCmd, bindingResult, aReq);
 		assertTrue(mav != null);

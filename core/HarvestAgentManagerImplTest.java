@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.junit4.SpringRunner;
 import org.webcurator.core.common.Environment;
 import org.webcurator.core.common.EnvironmentFactory;
+import org.webcurator.core.common.EnvironmentImpl;
 import org.webcurator.core.harvester.agent.HarvestAgent;
 import org.webcurator.core.harvester.agent.HarvestAgentFactory;
 import org.webcurator.core.scheduler.TargetInstanceManager;
@@ -39,6 +40,7 @@ import com.google.common.collect.Maps;
 //@RunWith(SpringRunner.class)
 @AutoConfigureMockMvc
 public class HarvestAgentManagerImplTest {
+
     private HarvestAgentManagerImpl underTest;
 
     @Mock
@@ -48,7 +50,7 @@ public class HarvestAgentManagerImplTest {
     @Mock
     private TargetInstanceManager mockTargetInstanceManager;
     @Mock
-    private Environment mockEnvironment = mock(Environment.class);
+    private Environment mockEnvironment;
 
     public HarvestAgentManagerImplTest() {
         MockitoAnnotations.initMocks(this);
@@ -67,8 +69,10 @@ public class HarvestAgentManagerImplTest {
         when(context.getBean("environmentWCT")).thenReturn(mockEnvironment);
         ApplicationContextFactory.setApplicationContext(context);
 
-        when(mockEnvironment.getApplicationVersion()).thenReturn("WCT For Testing");
-        EnvironmentFactory.setEnvironment(mockEnvironment);
+        EnvironmentImpl env = new EnvironmentImpl();
+        env.setApplicationVersion("3.0.1");
+        env.setHeritrixVersion("3.4.0");
+        EnvironmentFactory.setEnvironment(env);
     }
 
     @Test
@@ -682,13 +686,7 @@ public class HarvestAgentManagerImplTest {
 
     private HarvestAgentStatusDTO createRandomHarvestAgentStatusDTO() {
         HarvestAgentStatusDTO agentStatusDTO = new HarvestAgentStatusDTO();
-        String scheme = "http";
-        String host = "www.nlnz.org";
-        int port = 8080;
-        agentStatusDTO.setScheme(scheme);
-        agentStatusDTO.setHost(host);
-        agentStatusDTO.setPort(port);
-
+        agentStatusDTO.setBaseUrl("http://www.nlnz.org:8080");
         return agentStatusDTO;
     }
 }

@@ -18,8 +18,8 @@ import java.net.URLConnection;
 import java.util.*;
 
 public class WctCoordinatorClient extends AbstractRestClient {
-    public WctCoordinatorClient(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
-        super(scheme, host, port, restTemplateBuilder);
+    public WctCoordinatorClient(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
+        super(baseUrl, restTemplateBuilder);
     }
 
     public void completeArchiving(Long targetInstanceOid, String archiveIID) {

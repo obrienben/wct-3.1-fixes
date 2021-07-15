@@ -62,7 +62,6 @@ import java.util.Properties;
  *
  */
 @Configuration
-@PropertySource(value = "classpath:wct-webapp.properties")
 public class ServletConfig {
 
     @Value("${queueController.enableQaModule}")
@@ -79,7 +78,7 @@ public class ServletConfig {
     @Value("${queueController.thumbnailRenderer}")
     private String queueControllerThumbnailRenderer;
 
-    @Value("${wctCoordinator.autoQAUrl}")
+    @Value("${harvestCoordinator.autoQAUrl}")
     private String harvestCoordinatorAutoQAUrl;
 
     @Value("${groupTypes.subgroupSeparator}")
@@ -471,6 +470,7 @@ public class ServletConfig {
         TargetInstanceStateHandler bean = new TargetInstanceStateHandler();
         bean.setTargetInstanceManager(baseConfig.targetInstanceManager());
         bean.setWctCoordinator(wctCoordinator);
+//        bean.setHarvestAgentManager(baseConfig.harvestAgentManager());
 
         return bean;
     }
@@ -1058,5 +1058,4 @@ public class ServletConfig {
 
         return bean;
     }
-
 }

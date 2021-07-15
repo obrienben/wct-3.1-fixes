@@ -35,7 +35,7 @@ import org.webcurator.core.reader.LogReaderImpl;
 import org.webcurator.core.store.*;
 import org.webcurator.core.store.arc.*;
 import org.webcurator.core.util.ApplicationContextFactory;
-import org.webcurator.core.util.WebServiceEndPoint;
+//import org.webcurator.core.util.WebServiceEndPoint;
 
 import javax.annotation.PostConstruct;
 import java.nio.file.Files;
@@ -49,7 +49,6 @@ import java.util.*;
  */
 @SuppressWarnings("all")
 @Configuration
-@PropertySource(value = "classpath:wct-das.properties")
 public class DasConfig {
     private static Logger LOGGER = LoggerFactory.getLogger(DasConfig.class);
 
@@ -59,14 +58,8 @@ public class DasConfig {
     @Autowired
     private RestTemplateBuilder restTemplateBuilder;
 
-    @Value("${wctCoreWsEndpoint.scheme}")
-    private String wctCoreWsEndpointScheme;
-
-    @Value("${wctCoreWsEndpoint.host}")
-    private String wctCoreWsEndpointHost;
-
-    @Value("${wctCoreWsEndpoint.port}")
-    private int wctCoreWsEndpointPort;
+    @Value("${webapp.baseUrl}")
+    private String wctCoreWsEndpointBaseUrl;
 
     // the base directory for the arc store
     @Value("${arcDigitalAssetStoreService.baseDir}")
@@ -344,20 +337,20 @@ public class DasConfig {
                 maxConcurrencyModThreads);
     }
 
-    @Bean
-    public WebServiceEndPoint wctCoreWsEndpoint() {
-        WebServiceEndPoint bean = new WebServiceEndPoint();
-        bean.setSchema(wctCoreWsEndpointScheme);
-        bean.setHost(wctCoreWsEndpointHost);
-        bean.setPort(wctCoreWsEndpointPort);
-
-        return bean;
-    }
+//    @Bean
+//    public WebServiceEndPoint wctCoreWsEndpoint() {
+//        WebServiceEndPoint bean = new WebServiceEndPoint();
+//        bean.setSchema(wctCoreWsEndpointScheme);
+//        bean.setHost(wctCoreWsEndpointHost);
+//        bean.setPort(wctCoreWsEndpointPort);
+//
+//        return bean;
+//    }
 
     @Bean
     @Scope(BeanDefinition.SCOPE_SINGLETON)
     public WctCoordinatorClient wctCoordinatorClient() {
-        WctCoordinatorClient bean = new WctCoordinatorClient(wctCoreWsEndpointScheme, wctCoreWsEndpointHost, wctCoreWsEndpointPort, restTemplateBuilder);
+        WctCoordinatorClient bean = new WctCoordinatorClient(wctCoreWsEndpointBaseUrl, restTemplateBuilder);
         return bean;
     }
 
@@ -457,9 +450,9 @@ public class DasConfig {
 
     @Bean
     public WaybackIndexer waybackIndexer() {
-        WaybackIndexer bean = new WaybackIndexer();
+        WaybackIndexer bean = new WaybackIndexer(wctCoreWsEndpointBaseUrl, restTemplateBuilder);
         bean.setEnabled(waybackIndexerEnabled);
-        bean.setWsEndPoint(wctCoreWsEndpoint());
+//        bean.setWsEndPoint(wctCoreWsEndpoint());
         bean.setWaittime(waybackIndexerWaitTime);
         bean.setTimeout(waybackIndexerTimeout);
         bean.setWaybackInputFolder(waybackIndexerWaybackInputFolder);
@@ -471,9 +464,9 @@ public class DasConfig {
 
     @Bean
     public CrawlLogIndexer crawlLogIndexer() {
-        CrawlLogIndexer bean = new CrawlLogIndexer();
+        CrawlLogIndexer bean = new CrawlLogIndexer(wctCoreWsEndpointBaseUrl, restTemplateBuilder);
         bean.setEnabled(crawlLogIndexerEnabled);
-        bean.setWsEndPoint(wctCoreWsEndpoint());
+//        bean.setWsEndPoint(wctCoreWsEndpoint());
         bean.setLogsSubFolder(crawlLogIndexerLogsSubFolder);
         bean.setCrawlLogFileName(crawlLogIndexerCrawlLogFileName);
         bean.setStrippedLogFileName(crawlLogIndexerStrippedLogFileName);
@@ -484,9 +477,9 @@ public class DasConfig {
 
     @Bean
     public CDXIndexer cdxIndexer() {
-        CDXIndexer bean = new CDXIndexer();
+        CDXIndexer bean = new CDXIndexer(wctCoreWsEndpointBaseUrl, restTemplateBuilder);
         bean.setEnabled(cdxIndexerEnabled);
-        bean.setWsEndPoint(wctCoreWsEndpoint());
+//        bean.setWsEndPoint(wctCoreWsEndpoint());
 
         return bean;
     }

@@ -312,7 +312,7 @@ public class MockTargetInstanceDAO implements TargetInstanceDAO {
 		while(it.hasNext())
 		{
 			TargetInstance ti = it.next();
-			if(TargetInstance.STATE_QUEUED.equals(ti.getState()))
+			if(TargetInstance.STATE_QUEUED.equals(ti.getState()) || TargetInstance.STATE_SCHEDULED.equals(ti.getState()))
 			{
 				tiList.add(new QueuedTargetInstanceDTO(ti.getOid(), 
 						ti.getScheduledTime(), 
@@ -785,8 +785,23 @@ public class MockTargetInstanceDAO implements TargetInstanceDAO {
 
 	@Override
 	public List<QueuedTargetInstanceDTO> getUpcomingJobs(long futureMs) {
-		// TODO Auto-generated method stub
-		return null;
+		List<QueuedTargetInstanceDTO> tiList = new ArrayList<QueuedTargetInstanceDTO>();
+		Iterator<TargetInstance> it = tiOids.values().iterator();
+		while(it.hasNext())
+		{
+			TargetInstance ti = it.next();
+			if(TargetInstance.STATE_QUEUED.equals(ti.getState()) || TargetInstance.STATE_SCHEDULED.equals(ti.getState()))
+			{
+				tiList.add(new QueuedTargetInstanceDTO(ti.getOid(),
+						ti.getScheduledTime(),
+						ti.getPriority(),
+						ti.getState(),
+						ti.getBandwidthPercent(),
+						ti.getOwner().getAgency().getName()));
+			}
+		}
+
+		return tiList;
 	}
 
 

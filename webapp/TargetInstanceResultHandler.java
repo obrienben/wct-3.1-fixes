@@ -63,7 +63,7 @@ public class TargetInstanceResultHandler extends TabHandler {
      * the digital asset store containing the harvests.
      */
     private DigitalAssetStore digitalAssetStore = null;
-
+    private InTrayManagerImpl inTrayManager = null;
     private AgencyUserManager agencyUserManager;
 
     public void initBinder(HttpServletRequest request, ServletRequestDataBinder binder) throws Exception {
@@ -309,6 +309,10 @@ public class TargetInstanceResultHandler extends TabHandler {
         this.digitalAssetStore = digitalAssetStore;
     }
 
+    public void setInTrayManager(InTrayManagerImpl inTrayManager) {
+        this.inTrayManager = inTrayManager;
+    }
+
     /**
      * @param agencyUserManager the agencyUserManager to set
      */
@@ -339,19 +343,17 @@ public class TargetInstanceResultHandler extends TabHandler {
                 if (agency != null)
                     criteria.setAgencyId(String.valueOf(agency.getOid()));
                 criteria.setAgencyName(agency.getName());
-                CustomDepositFormResultDTO response = digitalAssetStore.getCustomDepositFormDetails(criteria);
+                CustomDepositFormResultDTO response = getDASClient().getCustomDepositFormDetails(criteria);
                 if (response != null && response.isCustomDepositFormRequired()) {
                     String customDepositFormHTMLContent = response.getHTMLForCustomDepositForm();
                     String customDepositFormURL = response.getUrlForCustomDepositForm();
 
                     // Will be needed to access the Rosetta interface
-                    ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
-                    DigitalAssetStoreClient dasClient = ctx.getBean(DigitalAssetStoreClient.class);
-                    InTrayManagerImpl inTrayManager = ctx.getBean(InTrayManagerImpl.class);
+                    DigitalAssetStoreClient dasClient =(DigitalAssetStoreClient) getDASClient();
 
                     req.getSession().setAttribute("dasPort", Integer.toString(dasClient.getPort()));
                     req.getSession().setAttribute("dasHost", dasClient.getHost());
-                    req.getSession().setAttribute("coreBaseUrl", inTrayManager.getWctBaseUrl());
+                    req.getSession().setAttribute("coreBaseUrl", getInTrayManager().getWctBaseUrl());
 
                     if (customDepositFormURL != null) {
                         customDepositFormRequired = true;
@@ -371,5 +373,21 @@ public class TargetInstanceResultHandler extends TabHandler {
             }
         }
         tmav.addObject("customDepositFormRequired", customDepositFormRequired);
+    }
+
+    private DigitalAssetStore getDASClient() {
+        if (digitalAssetStore == null) {
+            ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
+            digitalAssetStore = ctx.getBean(DigitalAssetStoreClient.class);
+        }
+        return digitalAssetStore;
+    }
+
+    private InTrayManagerImpl getInTrayManager() {
+        if (inTrayManager == null) {
+            ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
+            inTrayManager = ctx.getBean(InTrayManagerImpl.class);
+        }
+        return inTrayManager;
     }
 }

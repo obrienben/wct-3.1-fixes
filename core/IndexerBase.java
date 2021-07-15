@@ -1,7 +1,6 @@
 package org.webcurator.core.store;
 
-import java.io.File;
-import java.io.FilenameFilter;
+import java.io.*;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -14,46 +13,35 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.webcurator.core.coordinator.WctCoordinatorPaths;
 import org.webcurator.core.rest.AbstractRestClient;
-import org.webcurator.core.rest.RestClientResponseHandler;
-import org.webcurator.core.util.WebServiceEndPoint;
 import org.webcurator.domain.model.core.HarvestResultDTO;
 
 // TODO Note that the spring boot application needs @EnableRetry for the @Retryable to work.
 public abstract class IndexerBase extends AbstractRestClient implements RunnableIndex {
 	private static final Log log = LogFactory.getLog(IndexerBase.class);
 
-	private WebServiceEndPoint wsEndPoint;
 	private boolean defaultIndexer = false;
 	private Mode mode = Mode.INDEX;
-//    protected final RestTemplateBuilder restTemplateBuilder;
 
 	public class ARCFilter implements FilenameFilter {
 		public boolean accept(File dir, String name) {
-			return (name.toLowerCase().endsWith(".arc") ||
+			return name.toLowerCase().endsWith(".arc") ||
 					name.toLowerCase().endsWith(".arc.gz") ||
 					name.toLowerCase().endsWith(".warc") ||
-					name.toLowerCase().endsWith(".warc.gz"));
+					name.toLowerCase().endsWith(".warc.gz");
 		}
 	}
 
 	public IndexerBase() {
-		this(new RestTemplateBuilder());
+		super();
 	}
 
-	public IndexerBase(RestTemplateBuilder restTemplateBuilder) {
-		this("http", "localhost", 8080, restTemplateBuilder);
+	public IndexerBase(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
+		super(baseUrl, restTemplateBuilder);
 	}
-
-	public IndexerBase(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
-		super(scheme, host, port, restTemplateBuilder);
-		restTemplateBuilder.errorHandler(new RestClientResponseHandler());
-	}
-
 
 	protected IndexerBase(IndexerBase original) {
-		this(original.wsEndPoint.getSchema(), original.wsEndPoint.getHost(), original.wsEndPoint.getPort(), original.restTemplateBuilder);
+		super(original.baseUrl, original.restTemplateBuilder);
 		this.defaultIndexer = original.defaultIndexer;
-		this.wsEndPoint = original.wsEndPoint;
 	}
 
 	protected abstract HarvestResultDTO getResult();
@@ -81,20 +69,21 @@ public abstract class IndexerBase extends AbstractRestClient implements Runnable
 		}
 	}
 
-	@Override
-	public final void markComplete(Long harvestResultOid) {
+    @Override
+    public final void markComplete(Long harvestResultOid) {
 
-		synchronized (Indexer.lock) {
-			if (Indexer.lastRunningIndex(this.getName(), harvestResultOid)) {
-				log.info("Marking harvest result for job " + getResult().getTargetInstanceOid() + " as ready");
-				finaliseIndex(harvestResultOid);
+        synchronized (Indexer.lock) {
+            if (Indexer.lastRunningIndex(this.getName(), harvestResultOid)) {
+                log.info("Marking harvest result for job " + getResult().getTargetInstanceOid() + " as ready");
+                finaliseIndex(harvestResultOid);
 
-				log.info("Index for job " + getResult().getTargetInstanceOid() + " is now ready");
-			}
+                log.info("Index for job " + getResult().getTargetInstanceOid() + " is now ready");
+            }
 
-			Indexer.removeRunningIndex(getName(), harvestResultOid);
-		}
-	}
+            Indexer.removeRunningIndex(getName(), harvestResultOid);
+        }
+    }
+
 
 	@Retryable(maxAttempts = Integer.MAX_VALUE, backoff = @Backoff(delay = 30_000L))
 	protected void finaliseIndex(Long harvestResultOid) {
@@ -112,11 +101,4 @@ public abstract class IndexerBase extends AbstractRestClient implements Runnable
 		//Default implementation is to do nothing
 	}
 
-	public void setWsEndPoint(WebServiceEndPoint wsEndPoint) {
-		this.wsEndPoint = wsEndPoint;
-	}
-
-	public WebServiceEndPoint getWsEndPoint() {
-		return wsEndPoint;
-	}
 }

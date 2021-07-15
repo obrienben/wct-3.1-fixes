@@ -28,7 +28,6 @@ import java.util.Arrays;
 )
 @EnableAutoConfiguration(exclude = {SecurityAutoConfiguration.class, HibernateJpaAutoConfiguration.class})
 public class WebappApplication {
-
     public static void main(String[] args) {
         try {
             SpringApplication.run(WebappApplication.class, args);

@@ -111,8 +111,8 @@ function showTooltip(region, targetOid, targetInstanceOid, requestType) {
 //requestType:			request for target annotations or target instance annotations
 function buildTooltip(region, targetOid, targetInstanceOid, tooltip, requestType) {
 	var request = $.ajax({
-		url: "<%=request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+ request.getContextPath()%>/curator/target/annotation-ajax.html",   
-		type: "POST",   
+		url: "curator/target/annotation-ajax.html",
+		type: "POST",
 		data: {targetOid : targetOid, targetInstanceOid: targetInstanceOid, <%=Constants.AJAX_REQUEST_TYPE%>: requestType},
 		dataType: "html"
 	});
@@ -841,7 +841,7 @@ function clickEndorse(hrOid) {
 					</div>
 					</td>
 					<td class="noteImage">
-					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, null, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
+					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, <c:out value="${instance.oid}"/>, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
 						<img src="images/note_blue.gif" />
 					</div>
 					</td></tr>
@@ -862,7 +862,7 @@ function clickEndorse(hrOid) {
 					</div>
 					</td>
 					<td class="noteImage">
-					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, null, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
+					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, <c:out value="${instance.oid}"/>, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
 						<img src="images/note_blue.gif" />
 					</div>
 					</td></tr>

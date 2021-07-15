@@ -41,11 +41,10 @@ import org.webcurator.core.common.Environment;
 import org.webcurator.core.common.EnvironmentFactory;
 import org.webcurator.core.common.EnvironmentImpl;
 import org.webcurator.core.coordinator.HarvestResultManager;
+import org.webcurator.core.coordinator.HarvestResultManagerImpl;
 import org.webcurator.core.coordinator.WctCoordinator;
 import org.webcurator.core.harvester.agent.HarvestAgentFactoryImpl;
 import org.webcurator.core.harvester.coordinator.*;
-import org.webcurator.core.visualization.VisualizationDirectoryManager;
-import org.webcurator.core.visualization.networkmap.service.*;
 import org.webcurator.core.notification.InTrayManagerImpl;
 import org.webcurator.core.notification.MailServerImpl;
 import org.webcurator.core.permissionmapping.HierPermMappingDAOImpl;
@@ -69,13 +68,15 @@ import org.webcurator.core.targets.TargetManagerImpl;
 import org.webcurator.core.util.ApplicationContextFactory;
 import org.webcurator.core.util.AuditDAOUtil;
 import org.webcurator.core.util.LockManager;
+import org.webcurator.core.visualization.VisualizationDirectoryManager;
+import org.webcurator.core.visualization.networkmap.service.NetworkMapClient;
+import org.webcurator.core.visualization.networkmap.service.NetworkMapClientRemote;
 import org.webcurator.domain.*;
 import org.webcurator.domain.model.core.BusinessObjectFactory;
 import org.webcurator.domain.model.core.HarvestResult;
 import org.webcurator.domain.model.core.SchedulePattern;
 import org.webcurator.ui.tools.controller.*;
 
-import javax.annotation.PostConstruct;
 import javax.sql.DataSource;
 import java.io.IOException;
 import java.util.*;
@@ -88,7 +89,7 @@ import java.util.*;
 @SuppressWarnings("all")
 @Configuration
 @EnableTransactionManagement
-@PropertySource(value = "classpath:wct-webapp.properties")
+@ComponentScan("org.webcurator.core.coordinator")
 public class BaseConfig {
     private static Logger LOGGER = LoggerFactory.getLogger(BaseConfig.class);
 
@@ -122,22 +123,16 @@ public class BaseConfig {
     @Value("${hibernate.default_schema}")
     private String hibernateDefaultSchema;
 
-    @Value("${digitalAssetStore.scheme}")
-    private String digitalAssetStoreScheme;
+    @Value("${digitalAssetStore.baseUrl}")
+    private String digitalAssetStoreBaseUrl;
 
-    @Value("${digitalAssetStore.host}")
-    private String digitalAssetStoreHost;
-
-    @Value("${digitalAssetStore.port}")
-    private int digitalAssetStorePort;
-
-    @Value("${wctCoordinator.minimumBandwidth}")
+    @Value("${harvestCoordinator.minimumBandwidth}")
     private int minimumBandwidth;
 
-    @Value("${wctCoordinator.maxBandwidthPercent}")
+    @Value("${harvestCoordinator.maxBandwidthPercent}")
     private int maxBandwidthPercent;
 
-    @Value("${wctCoordinator.autoQAUrl}")
+    @Value("${harvestCoordinator.autoQAUrl}")
     private String autoQAUrl;
 
     @Value("${queueController.enableQaModule}")
@@ -242,7 +237,7 @@ public class BaseConfig {
     @Value("${digitalAssetStoreServer.uploadedFilesDir}")
     private String digitalAssetStoreServerUploadedFilesDir;
 
-    @Value("${wctCoordinator.autoQAUrl}")
+    @Value("${harvestCoordinator.autoQAUrl}")
     private String harvestCoordinatorAutoQAUrl;
 
     @Value("${qualityReviewToolController.archiveUrl}")
@@ -263,6 +258,51 @@ public class BaseConfig {
     @Value("${qualityReviewToolController.webArchiveTarget}")
     private String qualityReviewToolControllerWebArchiveTarget;
 
+    @Value("${crawlPoliteness.polite.delayFactor}")
+    private double crawlPolitenessPoliteDelayFactor;
+
+    @Value("${crawlPoliteness.polite.minDelayMs}")
+    private long crawlPolitenessPoliteMinDelayMs;
+
+    @Value("${crawlPoliteness.polite.MaxDelayMs}")
+    private long crawlPolitenessPoliteMaxDelayMs;
+
+    @Value("${crawlPoliteness.polite.respectCrawlDelayUpToSeconds}")
+    private long crawlPolitenessPoliteRespectCrawlDelay;
+
+    @Value("${crawlPoliteness.polite.maxPerHostBandwidthUsageKbSec}")
+    private long crawlPolitenessPoliteMaxPerHostBandwidth;
+
+    @Value("${crawlPoliteness.medium.delayFactor}")
+    private double crawlPolitenessMediumDelayFactor;
+
+    @Value("${crawlPoliteness.medium.minDelayMs}")
+    private long crawlPolitenessMediumMinDelayMs;
+
+    @Value("${crawlPoliteness.medium.MaxDelayMs}")
+    private long crawlPolitenessMediumMaxDelayMs;
+
+    @Value("${crawlPoliteness.medium.respectCrawlDelayUpToSeconds}")
+    private long crawlPolitenessMediumRespectCrawlDelay;
+
+    @Value("${crawlPoliteness.medium.maxPerHostBandwidthUsageKbSec}")
+    private long crawlPolitenessMediumMaxPerHostBandwidth;
+
+    @Value("${crawlPoliteness.aggressive.delayFactor}")
+    private double crawlPolitenessAggressiveDelayFactor;
+
+    @Value("${crawlPoliteness.aggressive.minDelayMs}")
+    private long crawlPolitenessAggressiveMinDelayMs;
+
+    @Value("${crawlPoliteness.aggressive.MaxDelayMs}")
+    private long crawlPolitenessAggressiveMaxDelayMs;
+
+    @Value("${crawlPoliteness.aggressive.respectCrawlDelayUpToSeconds}")
+    private long crawlPolitenessAggressiveRespectCrawlDelay;
+
+    @Value("${crawlPoliteness.aggressive.maxPerHostBandwidthUsageKbSec}")
+    private long crawlPolitenessAggressiveMaxPerHostBandwidth;
+
     @Value("${core.base.dir}")
     private String baseDir;
 
@@ -271,14 +311,6 @@ public class BaseConfig {
 
     @Autowired
     private WctCoordinator wctCoordinator;
-
-    @Autowired
-    private HarvestResultManager harvestResultManager;
-
-    @PostConstruct
-    public void init() {
-//        visualizationManager.setUploadDir(uploadedFilesDir);
-    }
 
     @Bean
     @Scope(BeanDefinition.SCOPE_SINGLETON)
@@ -378,30 +410,9 @@ public class BaseConfig {
     @Scope(BeanDefinition.SCOPE_SINGLETON)
     @Lazy(false)
     public DigitalAssetStoreClient digitalAssetStore() {
-        DigitalAssetStoreClient bean = new DigitalAssetStoreClient(digitalAssetStoreScheme, digitalAssetStoreHost, digitalAssetStorePort, restTemplateBuilder);
+        DigitalAssetStoreClient bean = new DigitalAssetStoreClient(digitalAssetStoreBaseUrl, restTemplateBuilder);
         return bean;
     }
-
-    /*
-    @Bean
-    @Scope(BeanDefinition.SCOPE_SINGLETON)
-    public PruneAndImportClient getPruneAndImportService() {
-//        PruneAndImportClientRemote client = new PruneAndImportClientRemote(digitalAssetStoreScheme, digitalAssetStoreHost, digitalAssetStorePort, restTemplateBuilder);
-//        client.setCoreCacheDir(coreCacheDir);
-//        client.setAuditor(audit());
-//        client.setHarvestAgentManager(harvestAgentManager());
-////        client.setHarvestCoordinator(wctCoordinator);
-//        client.setTargetInstanceDao(targetInstanceDao());
-//        client.setTargetInstanceManager(targetInstanceManager());
-////        client.setImportedFileRepository(importedFileRepository);
-        importClientRemote.setScheme(digitalAssetStoreScheme);
-        importClientRemote.setHost(digitalAssetStoreHost);
-        importClientRemote.setPort(digitalAssetStorePort);
-        importClientRemote.set
-        return client;
-    }
-
-     */
 
     @Bean
     @Scope(BeanDefinition.SCOPE_SINGLETON)
@@ -409,7 +420,7 @@ public class BaseConfig {
     public DigitalAssetStoreFactoryImpl digitalAssetStoreFactory() {
         DigitalAssetStoreFactoryImpl bean = new DigitalAssetStoreFactoryImpl();
         bean.setDAS(digitalAssetStore());
-        bean.setLogReader(new LogReaderClient(digitalAssetStoreScheme, digitalAssetStoreHost, digitalAssetStorePort, restTemplateBuilder));
+        bean.setLogReader(new LogReaderClient(digitalAssetStoreBaseUrl, restTemplateBuilder));
         return bean;
     }
 
@@ -417,7 +428,7 @@ public class BaseConfig {
     @Scope(BeanDefinition.SCOPE_SINGLETON)
     @Lazy(false)
     public NetworkMapClient networkMapClientReomote() {
-        return new NetworkMapClientRemote(digitalAssetStoreScheme, digitalAssetStoreHost, digitalAssetStorePort, restTemplateBuilder);
+        return new NetworkMapClientRemote(digitalAssetStoreBaseUrl, restTemplateBuilder);
     }
 
     @Bean
@@ -455,8 +466,6 @@ public class BaseConfig {
         bean.setGlobals(globalsMap);
 
         bean.setRulesFileName("rules.drl");
-//        bean.setQualityReviewFacade(qualityReviewFacade());
-        //bean.setHarvestCoordinator(wctCoordinator());
         bean.setTargetInstanceManager(targetInstanceManager());
 
         return bean;
@@ -606,25 +615,31 @@ public class BaseConfig {
     }
 
     @Bean
+    public HarvestResultManager harvestResultManager() {
+        HarvestResultManagerImpl bean = new HarvestResultManagerImpl();
+        bean.setTargetInstanceManager(targetInstanceManager());
+        bean.setNetworkMapClient(networkMapClientReomote());
+        return bean;
+    }
+
+    @Bean
     public HarvestAgentManagerImpl harvestAgentManager() {
         HarvestAgentManagerImpl bean = new HarvestAgentManagerImpl();
         bean.setHarvestAgentFactory(harvestAgentFactory());
         bean.setTargetInstanceManager(targetInstanceManager());
         bean.setTargetInstanceDao(targetInstanceDao());
-        bean.setWctCoordinator(wctCoordinator);
-        bean.setHarvestResultManager(harvestResultManager);
+        bean.setHarvestResultManager(harvestResultManager());
         return bean;
     }
 
     @Bean
-    public HarvestLogManager harvestLogManager() {
+    public HarvestLogManagerImpl harvestLogManager() {
         HarvestLogManagerImpl bean = new HarvestLogManagerImpl();
         bean.setHarvestAgentManager(harvestAgentManager());
         bean.setDigitalAssetStoreFactory(digitalAssetStoreFactory());
 
         return bean;
     }
-
 
     @Bean(name = HarvestResult.PATCH_STAGE_TYPE_CRAWLING)
     public PatchingHarvestLogManager patchingHarvestLogManagerNormal() {
@@ -672,8 +687,6 @@ public class BaseConfig {
         bean.setTargetInstanceManager(targetInstanceManager());
         bean.setTargetInstanceDao(targetInstanceDao());
         bean.setAutoQAUrl(autoQAUrl);
-        //bean.setQaRecommendationService(qaRecommendationService());
-//        bean.setQualityReviewFacade(qualityReviewFacade());
         bean.setEnableQaModule(enableQaModule);
         bean.setAutoPrunedNote(autoPrunedNote);
 
@@ -975,6 +988,8 @@ public class BaseConfig {
         bean.setNotificationSubject("Core");
         bean.setCheckType("Bandwidth");
         bean.setHarvestCoordinator(wctCoordinator);
+        bean.setHarvestAgentManager(harvestAgentManager());
+        bean.setHarvestBandwidthManager(harvestBandwidthManager());
         bean.setNotifier(checkNotifier());
 
         return bean;
@@ -1184,29 +1199,6 @@ public class BaseConfig {
         return bean;
     }
 
-//    @Bean
-//    @Scope(BeanDefinition.SCOPE_SINGLETON)
-//    @Lazy(false)
-//    public TreeToolControllerAttribute treeToolControllerAttribute() {
-//        TreeToolControllerAttribute bean = new TreeToolControllerAttribute();
-//        bean.setEnableAccessTool(qualityReviewToolControllerEnableAccessTool);
-//        bean.setUploadedFilesDir(digitalAssetStoreServerUploadedFilesDir);
-//        bean.setAutoQAUrl(harvestCoordinatorAutoQAUrl);
-//        return bean;
-//    }
-
-
-    //TODO: uncheck
-//    @Bean
-//    @Scope(BeanDefinition.SCOPE_SINGLETON)
-//    @Lazy(false)
-//    public TreeToolControllerAJAX treeToolControllerAJAX() {
-//        TreeToolControllerAJAX bean = new TreeToolControllerAJAX();
-//        bean.setQualityReviewFacade(qualityReviewFacade());
-//        bean.setHarvestResourceUrlMapper(harvestResourceUrlMapper());
-//        return bean;
-//    }
-
     @Bean
     @Scope(BeanDefinition.SCOPE_SINGLETON)
     @Lazy(false)
@@ -1233,7 +1225,7 @@ public class BaseConfig {
     public PolitenessOptions politePolitenessOptions() {
         // Delay Factor, Min Delay milliseconds, Max Delay milliseconds,
         // Respect crawl delay up to seconds, Max per host bandwidth usage kb/sec
-        return new PolitenessOptions(10.0, 9000L, 90000L, 180L, 400L);
+        return new PolitenessOptions(crawlPolitenessPoliteDelayFactor, crawlPolitenessPoliteMinDelayMs, crawlPolitenessPoliteMaxDelayMs, crawlPolitenessPoliteRespectCrawlDelay, crawlPolitenessPoliteMaxPerHostBandwidth);
     }
 
     @Bean
@@ -1242,7 +1234,7 @@ public class BaseConfig {
     public PolitenessOptions mediumPolitenessOptions() {
         // Delay Factor, Min Delay milliseconds, Max Delay milliseconds,
         // Respect crawl delay up to seconds, Max per host bandwidth usage kb/sec
-        return new PolitenessOptions(5.0, 3000L, 30000L, 30L, 800L);
+        return new PolitenessOptions(crawlPolitenessMediumDelayFactor, crawlPolitenessMediumMinDelayMs, crawlPolitenessMediumMaxDelayMs, crawlPolitenessMediumRespectCrawlDelay, crawlPolitenessMediumMaxPerHostBandwidth);
     }
 
     @Bean
@@ -1251,6 +1243,6 @@ public class BaseConfig {
     public PolitenessOptions aggressivePolitenessOptions() {
         // Delay Factor, Min Delay milliseconds, Max Delay milliseconds,
         // Respect crawl delay up to seconds, Max per host bandwidth usage kb/sec
-        return new PolitenessOptions(1.0, 1000L, 10000L, 2L, 2000L);
+        return new PolitenessOptions(crawlPolitenessAggressiveDelayFactor, crawlPolitenessAggressiveMinDelayMs, crawlPolitenessAggressiveMaxDelayMs, crawlPolitenessAggressiveRespectCrawlDelay, crawlPolitenessAggressiveMaxPerHostBandwidth);
     }
 }

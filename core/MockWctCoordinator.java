@@ -220,7 +220,7 @@ public class MockWctCoordinator implements WctCoordinator {
     }
 
     @Override
-    public void recoverHarvests(String scheme, String host, int port, String Service) {
+    public void recoverHarvests(String baseUrl, String Service) {
         // TODO Auto-generated method stub
     }
 

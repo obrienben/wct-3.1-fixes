@@ -57,35 +57,35 @@ public class TargetInstanceStateHandler extends TabHandler {
     }
 
     public void processTab(TabbedController tc, Tab currentTab,
-            HttpServletRequest req, HttpServletResponse res, Object comm,
-            BindingResult bindingResult) {
+                           HttpServletRequest req, HttpServletResponse res, Object comm,
+                           BindingResult bindingResult) {
         // process the submit of the tab called on change tab or save
     }
 
     public TabbedModelAndView preProcessNextTab(TabbedController tc,
-            Tab nextTabID, HttpServletRequest req, HttpServletResponse res,
-            Object comm, BindingResult bindingResult) {
+                                                Tab nextTabID, HttpServletRequest req, HttpServletResponse res,
+                                                Object comm, BindingResult bindingResult) {
         // build mav stuff b4 displaying the tab
         TabbedModelAndView tmav = tc.new TabbedModelAndView();
         Boolean editMode = false;
         TargetInstanceCommand cmd = null;
         TargetInstance ti = null;
         if (comm instanceof TargetInstanceCommand) {
-        	cmd = (TargetInstanceCommand) comm;
-        	if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_EDIT)) {
-        		editMode = true;
-        	}
+            cmd = (TargetInstanceCommand) comm;
+            if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_EDIT)) {
+                editMode = true;
+            }
         }
 
         if (req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI) == null) {
-    		ti = targetInstanceManager.getTargetInstance(cmd.getTargetInstanceId(), true);
-    		req.getSession().setAttribute(TargetInstanceCommand.SESSION_TI, ti);
-    		req.getSession().setAttribute(TargetInstanceCommand.SESSION_MODE, editMode);
-    	}
-    	else {
-    		ti = (TargetInstance) req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI);
-    		editMode = (Boolean) req.getSession().getAttribute(TargetInstanceCommand.SESSION_MODE);
-    	}
+            ti = targetInstanceManager.getTargetInstance(cmd.getTargetInstanceId(), true);
+            req.getSession().setAttribute(TargetInstanceCommand.SESSION_TI, ti);
+            req.getSession().setAttribute(TargetInstanceCommand.SESSION_MODE, editMode);
+        }
+        else {
+            ti = (TargetInstance) req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI);
+            editMode = (Boolean) req.getSession().getAttribute(TargetInstanceCommand.SESSION_MODE);
+        }
 
         HashMap agents = wctCoordinator.getHarvestAgents();
 
@@ -100,10 +100,10 @@ public class TargetInstanceStateHandler extends TabHandler {
         }
 
         if (harvester == null) {
-        	HarvesterStatus status = ti.getStatus();
-        	if (status != null) {
-        		harvester = status.getAsDTO();
-        	}
+            HarvesterStatus status = ti.getStatus();
+            if (status != null) {
+                harvester = status.getAsDTO();
+            }
         }
 
         // tmav.addObject(Constants.GBL_CMD_DATA, cmd);
@@ -114,8 +114,8 @@ public class TargetInstanceStateHandler extends TabHandler {
     }
 
     public ModelAndView processOther(TabbedController tc, Tab currentTab,
-            HttpServletRequest req, HttpServletResponse res, Object comm,
-            BindingResult bindingResult) {
+                                     HttpServletRequest req, HttpServletResponse res, Object comm,
+                                     BindingResult bindingResult) {
         TargetInstanceCommand cmd = (TargetInstanceCommand) comm;
         if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_HARVEST)) {
             ModelAndView mav = new ModelAndView();

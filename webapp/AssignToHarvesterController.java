@@ -44,7 +44,7 @@ public class AssignToHarvesterController {
 	@Autowired
 	private TargetInstanceManager targetInstanceManager;
 	/* The Harvest Coordinator */
-    @Autowired
+	@Autowired
 	private WctCoordinator wctCoordinator;
 
 	/**
@@ -58,31 +58,31 @@ public class AssignToHarvesterController {
 		TargetInstanceCommand command = new TargetInstanceCommand();
 		command.setTargetInstanceId(targetInstanceId);
 		command.setHarvestResultId(harvestResultId);
-        HashMap<String, HarvestAgentStatusDTO> agents = wctCoordinator.getHarvestAgents();
-        TargetInstance ti = targetInstanceManager.getTargetInstance(command.getTargetInstanceId());
-        String instanceAgency = ti.getOwner().getAgency().getName();
+		HashMap<String, HarvestAgentStatusDTO> agents = wctCoordinator.getHarvestAgents();
+		TargetInstance ti = targetInstanceManager.getTargetInstance(command.getTargetInstanceId());
+		String instanceAgency = ti.getOwner().getAgency().getName();
 
-        String key = "";
-        HarvestAgentStatusDTO agent = null;
-        HashMap<String, HarvestAgentStatusDTO> allowedAgents = new HashMap<String, HarvestAgentStatusDTO>();
-        Iterator<String> it = agents.keySet().iterator();
-        while (it.hasNext()) {
+		String key = "";
+		HarvestAgentStatusDTO agent = null;
+		HashMap<String, HarvestAgentStatusDTO> allowedAgents = new HashMap<String, HarvestAgentStatusDTO>();
+		Iterator<String> it = agents.keySet().iterator();
+		while (it.hasNext()) {
 			key = (String) it.next();
 			agent = agents.get(key);
 			if ((agent.getAllowedAgencies().contains(instanceAgency) || agent.getAllowedAgencies().isEmpty())
-									&& agent.getHarvesterType().equals(ti.getProfile().getHarvesterType())) {
+					&& agent.getHarvesterType().equals(ti.getProfile().getHarvesterType())) {
 				allowedAgents.put(key, agent);
 			}
 		}
 
-        ModelAndView mav = new ModelAndView();
-        mav.addObject(TargetInstanceCommand.SESSION_TI, ti);
-        mav.addObject(TargetInstanceCommand.MDL_INSTANCE, ti);
-        mav.addObject(Constants.GBL_CMD_DATA, command);
-        mav.addObject(TargetInstanceCommand.MDL_AGENTS, allowedAgents);
-        mav.setViewName(Constants.VIEW_HARVEST_NOW);
+		ModelAndView mav = new ModelAndView();
+		mav.addObject(TargetInstanceCommand.SESSION_TI, ti);
+		mav.addObject(TargetInstanceCommand.MDL_INSTANCE, ti);
+		mav.addObject(Constants.GBL_CMD_DATA, command);
+		mav.addObject(TargetInstanceCommand.MDL_AGENTS, allowedAgents);
+		mav.setViewName(Constants.VIEW_HARVEST_NOW);
 
-        return mav;
+		return mav;
 	}
 
 	public WctCoordinator getHarvestCoordinator() {
@@ -103,7 +103,4 @@ public class AssignToHarvesterController {
 	public void setTargetInstanceManager(TargetInstanceManager targetInstanceManager) {
 		this.targetInstanceManager = targetInstanceManager;
 	}
-
-
-
 }

@@ -6,8 +6,6 @@ import org.apache.commons.httpclient.Header;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
-import org.springframework.retry.annotation.Backoff;
-import org.springframework.retry.annotation.Retryable;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.webcurator.core.exceptions.DigitalAssetStoreException;
@@ -15,76 +13,51 @@ import org.webcurator.core.rest.AbstractRestClient;
 import org.webcurator.core.visualization.modification.metadata.ModifyApplyCommand;
 import org.webcurator.core.visualization.modification.metadata.ModifyResult;
 import org.webcurator.domain.model.core.*;
-import org.webcurator.domain.model.core.harvester.store.HarvestStoreDTO;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URL;
-import java.net.URLConnection;
-import java.net.URLEncoder;
+import java.net.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Map;
 
+
 @SuppressWarnings("all")
 // TODO Note that the spring boot application needs @EnableRetry for the @Retryable to work.
 public class DigitalAssetStoreClient extends AbstractRestClient implements DigitalAssetStore {
-    public DigitalAssetStoreClient(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
-        super(scheme, host, port, restTemplateBuilder);
-    }
+    /* The way to upload warcs, logs and reports to store component */
+    private String fileUploadMode;
+    private String harvestBaseUrl;
 
-    private void internalSave(String targetInstanceName, HarvestStoreDTO harvestStoreDTO) throws DigitalAssetStoreException {
-        try {
-            HttpEntity<String> request = this.createHttpRequestEntity(harvestStoreDTO);
-
-            Map<String, String> pathVariables = ImmutableMap.of("target-instance-name", targetInstanceName);
-            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(DigitalAssetStorePaths.SAVE));
-            URI uri = uriComponentsBuilder.buildAndExpand(pathVariables).toUri();
-
-            RestTemplate restTemplate = restTemplateBuilder.build();
-            restTemplate.postForObject(uri, request, Void.class);
-        } catch (Exception e) {
-            log.error(e.getMessage());
-            throw new DigitalAssetStoreException(e);
-        }
+    public DigitalAssetStoreClient(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
+        super(baseUrl, restTemplateBuilder);
     }
 
     @Override
     public void save(String targetInstanceName, String directory, Path path) throws DigitalAssetStoreException {
-        HarvestStoreDTO requestBody = new HarvestStoreDTO();
-        requestBody.setDirectory(directory);
-        requestBody.setPathFromPath(path);
+        try {
+            File file = path.toFile();
+            if (!file.exists() || !file.isFile()) {
+                throw new DigitalAssetStoreException("File does not exist: " + path);
+            }
 
-        internalSave(targetInstanceName, requestBody);
-    }
+            DigitalAssetStoreHarvestSaveDTO dto = new DigitalAssetStoreHarvestSaveDTO();
+            dto.setFileUploadMode(fileUploadMode);
+            dto.setTargetInstanceName(targetInstanceName);
+            dto.setDirectory(directory);
+            dto.setFilePath(file.getAbsolutePath());
+            dto.setHarvestBaseUrl(harvestBaseUrl);
 
-    @Override
-    // Assuming that without any values set will keep infinitely retrying
-    @Retryable(maxAttempts = Integer.MAX_VALUE, backoff = @Backoff(delay = 30_000L))
-    public void save(String targetInstanceName, Path path) throws DigitalAssetStoreException {
-        HarvestStoreDTO requestBody = new HarvestStoreDTO();
-        requestBody.setPathFromPath(path);
+            HttpEntity<String> requestBody = this.createHttpRequestEntity(dto);
 
-        internalSave(targetInstanceName, requestBody);
-    }
+            RestTemplate restTemplate = restTemplateBuilder.build();
+            restTemplate.postForEntity(getUrl(DigitalAssetStorePaths.SAVE), requestBody, Void.class);
+        } catch (Exception e) {
+            log.error("Save file failed", e);
+            throw new DigitalAssetStoreException(e);
+        }
 
-    @Override
-    public void save(String targetInstanceName, String directory, List<Path> paths) throws DigitalAssetStoreException {
-        HarvestStoreDTO requestBody = new HarvestStoreDTO();
-        requestBody.setDirectory(directory);
-        requestBody.setPathsFromPath(paths);
-
-        internalSave(targetInstanceName, requestBody);
-    }
-
-    @Override
-    public void save(String targetInstanceName, List<Path> paths) throws DigitalAssetStoreException {
-        HarvestStoreDTO requestBody = new HarvestStoreDTO();
-        requestBody.setPathsFromPath(paths);
-
-        internalSave(targetInstanceName, requestBody);
     }
 
     @Override
@@ -247,7 +220,7 @@ public class DigitalAssetStoreClient extends AbstractRestClient implements Digit
         if (!customDepositFormURL.startsWith("/")) {
             customDepositFormURL = "/" + customDepositFormURL;
         }
-        String urlPrefix = "http://" + getHost() + ":" + getPort();
+        String urlPrefix = baseUrl;
         response.setUrlForCustomDepositForm(urlPrefix + customDepositFormURL);
     }
 
@@ -276,5 +249,26 @@ public class DigitalAssetStoreClient extends AbstractRestClient implements Digit
         // TODO Process any exceptions or 404s, etc. as DigitalAssetStoreException, currently thrown as WCTRuntimeException.
         RestTemplate restTemplate = restTemplateBuilder.build();
         restTemplate.postForObject(uriComponentsBuilder.buildAndExpand().toUri(), null, Void.class);
+    }
+
+    public String getFileUploadMode() {
+        return fileUploadMode;
+    }
+
+    public void setFileUploadMode(String fileUploadMode) {
+        //Take copy as the default file transfering type
+        if (fileUploadMode == null || !fileUploadMode.equalsIgnoreCase(FILE_UPLOAD_MODE_STREAM)) {
+            this.fileUploadMode = FILE_UPLOAD_MODE_COPY;
+        } else {
+            this.fileUploadMode = FILE_UPLOAD_MODE_STREAM;
+        }
+    }
+
+    public String getHarvestBaseUrl() {
+        return harvestBaseUrl;
+    }
+
+    public void setHarvestBaseUrl(String harvestBaseUrl) {
+        this.harvestBaseUrl = harvestBaseUrl;
     }
 }

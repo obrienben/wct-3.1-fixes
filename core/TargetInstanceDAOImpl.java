@@ -19,6 +19,7 @@ import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.hibernate.Criteria;
@@ -34,6 +35,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionCallback;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.webcurator.common.ui.CommandConstants;
+import org.webcurator.common.util.SafeSimpleDateFormat;
 import org.webcurator.core.exceptions.WCTRuntimeException;
 import org.webcurator.core.util.Auditor;
 import org.webcurator.domain.model.core.*;
@@ -50,7 +52,7 @@ import org.webcurator.domain.model.dto.TargetInstanceDTO;
 
 public class TargetInstanceDAOImpl extends HibernateDaoSupport implements TargetInstanceDAO {
 
-    private static SimpleDateFormat fullFormat = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
+    private static SimpleDateFormat fullFormat = SafeSimpleDateFormat.getInstance("dd/MM/yyyy HH:mm:ss");
 
     private static Log log = LogFactory.getLog(TargetInstanceDAOImpl.class);
 
@@ -90,7 +92,11 @@ public class TargetInstanceDAOImpl extends HibernateDaoSupport implements Target
                     }
             );
         } catch (Exception e) {
-            log.error(e);
+            if (originalTI != null) {
+                log.error("Failed to save Target Instance: " + originalTI.getOid(), e);
+            } else {
+                log.error(e);
+            }
         }
 
         if (aObj instanceof TargetInstance) {
@@ -161,9 +167,10 @@ public class TargetInstanceDAOImpl extends HibernateDaoSupport implements Target
                 new TransactionCallback() {
                     public Object doInTransaction(TransactionStatus ts) {
                         try {
+                            // Note: this DELETE cascades to ARC_HARVEST_RESOURCE as per the db schema
                             log.debug("Before deleting harvest result resources");
-                            currentSession().createQuery("DELETE HarvestResource WHERE result.oid=:hrOid").setLong("hrOid", harvestResultId)
-                                    .executeUpdate();
+                            currentSession().createNativeQuery("DELETE FROM {h-schema}HARVEST_RESOURCE WHERE HRC_HARVEST_RESULT_OID=?1")
+                                    .setParameter(1, harvestResultId).executeUpdate();
                             log.debug("After deleting harvest result resources");
                         } catch (Exception ex) {
                             log.warn("Problem occured deleting HarvestResource records", ex);

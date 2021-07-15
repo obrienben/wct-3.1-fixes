@@ -3,6 +3,7 @@ package org.webcurator.core.harvester.coordinator;
 import java.text.MessageFormat;
 import java.util.*;
 
+import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.webcurator.core.common.Environment;
@@ -62,44 +63,56 @@ public class HarvestAgentManagerImpl implements HarvestAgentManager {
             }
 
             // lock the ti for update
-            if (!lock(tiOid))
+            if (!lock(tiOid)) {
+                log.debug("Skipping heartbeat, found locked target instance: " + tiOid);
                 break;
-            log.debug("Obtained lock for ti {}", tiOid);
-            TargetInstance ti = targetInstanceDao.load(tiOid);
-            HarvesterStatusDTO harvesterStatusDto = (HarvesterStatusDTO) harvesterStatusMap.get(key);
-
-            updateStatusWithEnvironment(harvesterStatusDto);
-            HarvesterStatus harvesterStatus = createHarvesterStatus(ti, harvesterStatusDto);
-
-            log.debug("Heartbeat for ti: {}, state: {}", tiOid, harvesterStatus.getStatus());
-
-            String harvesterStatusValue = harvesterStatus.getStatus();
-            if (harvesterStatusValue.startsWith("Paused")) {
-                doHeartbeatPaused(ti, harvestResultNumber);
             }
+            try {
+                log.debug("Obtained lock for ti {}", tiOid);
+                TargetInstance ti = targetInstanceDao.load(tiOid);
+                HarvesterStatusDTO harvesterStatusDto = (HarvesterStatusDTO) harvesterStatusMap.get(key);
 
-            // We have seen cases where a running Harvest is showing as Queued
-            // in the UI. Once in this state, the user has no control over the
-            // harvest and cannot use it. This work around means that any
-            // TIs in the wrong state will be corrected on the next heartbeat
-            if (harvesterStatusValue.startsWith("Running")) {
-                doHeartbeatRunning(aStatus, ti, harvesterStatus, harvestResultNumber);
+                updateStatusWithEnvironment(harvesterStatusDto);
+                HarvesterStatus harvesterStatus = createHarvesterStatus(ti, harvesterStatusDto);
+
+                log.debug("Heartbeat for ti: {}, state: {}", tiOid, harvesterStatus.getStatus());
+
+                String harvesterStatusValue = harvesterStatus.getStatus();
+                if (StringUtils.isEmpty(harvesterStatusValue)) {
+                    log.error("harvesterStatusValue is null, tiOid:{}", tiOid);
+                    return;
+                }
+
+                if (harvesterStatusValue.startsWith("Paused")) {
+                    doHeartbeatPaused(ti, harvestResultNumber);
+                }
+
+                // We have seen cases where a running Harvest is showing as Queued
+                // in the UI. Once in this state, the user has no control over the
+                // harvest and cannot use it. This work around means that any
+                // TIs in the wrong state will be corrected on the next heartbeat
+                if (harvesterStatusValue.startsWith("Running")) {
+                    doHeartbeatRunning(aStatus, ti, harvesterStatus, harvestResultNumber);
+                }
+
+                if (harvesterStatusValue.startsWith("Finished")) {
+                    doHeartbeatFinished(ti, harvestResultNumber);
+                }
+
+                // This is a required because when a
+                // "Could not launch job - Fatal InitializationException" job occurs
+                // We do not get a notification that causes the job to stop nicely
+                if (harvesterStatusValue.startsWith("Could not launch job - Fatal InitializationException")) {
+                    doHeartbeatLaunchFailed(ti, harvestResultNumber);
+                }
+
+                targetInstanceManager.save(ti);
+            } catch (Exception e) {
+                log.error("Failed to process: {}", tiOid, e);
+            } finally {
+                unLock(tiOid);
+                log.debug("Released lock for ti " + tiOid);
             }
-
-            if (harvesterStatusValue.startsWith("Finished")) {
-                doHeartbeatFinished(ti, harvestResultNumber);
-            }
-
-            // This is a required because when a
-            // "Could not launch job - Fatal InitializationException" job occurs
-            // We do not get a notification that causes the job to stop nicely
-            if (harvesterStatusValue.startsWith("Could not launch job - Fatal InitializationException")) {
-                doHeartbeatLaunchFailed(ti, harvestResultNumber);
-            }
-
-            targetInstanceManager.save(ti);
-            unLock(tiOid);
-            log.debug("Released lock for ti " + tiOid);
         }
     }
 
@@ -155,8 +168,7 @@ public class HarvestAgentManagerImpl implements HarvestAgentManager {
         if (state.equals(TargetInstance.STATE_RUNNING)) {
             ti.setState(TargetInstance.STATE_STOPPING);
         } else if (state.equals(TargetInstance.STATE_PATCHING)) {
-            harvestResultManager.updateHarvestResultStatus(ti.getOid(), harvestResultNumber, HarvestResult.STATE_CRAWLING, HarvestResult.STATUS_FINISHED);
-            wctCoordinator.pushPruneAndImport(ti.getOid(), harvestResultNumber);
+            log.info("Recrawle job is stopping, tiOID:{}, hrNum:{}", ti.getOid(), harvestResultNumber);
         }
     }
 
@@ -417,11 +429,9 @@ public class HarvestAgentManagerImpl implements HarvestAgentManager {
     }
 
     @Override
-    public void recoverHarvests(String haScheme, String haHost, int haPort, String haService, List<String> activeJobs) {
+    public void recoverHarvests(String baseUrl, String haService, List<String> activeJobs) {
         HarvestAgentStatusDTO tempHarvestAgentStatusDTO = new HarvestAgentStatusDTO();
-        tempHarvestAgentStatusDTO.setScheme(haScheme);
-        tempHarvestAgentStatusDTO.setHost(haHost);
-        tempHarvestAgentStatusDTO.setPort(haPort);
+        tempHarvestAgentStatusDTO.setBaseUrl(baseUrl);
         HarvestAgent agent = harvestAgentFactory.getHarvestAgent(tempHarvestAgentStatusDTO);
         agent.recoverHarvests(activeJobs);
     }
@@ -453,13 +463,13 @@ public class HarvestAgentManagerImpl implements HarvestAgentManager {
         this.targetInstanceDao = targetInstanceDao;
     }
 
-    public WctCoordinator getWctCoordinator() {
-        return wctCoordinator;
-    }
-
-    public void setWctCoordinator(WctCoordinator wctCoordinator) {
-        this.wctCoordinator = wctCoordinator;
-    }
+//    public WctCoordinator getWctCoordinator() {
+//        return wctCoordinator;
+//    }
+//
+//    public void setWctCoordinator(WctCoordinator wctCoordinator) {
+//        this.wctCoordinator = wctCoordinator;
+//    }
 
     public HarvestResultManager getHarvestResultManager() {
         return harvestResultManager;

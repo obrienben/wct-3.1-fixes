@@ -19,5 +19,5 @@ public class WctCoordinatorPaths {
     public static final String MODIFICATION_DOWNLOAD_IMPORTED_FILE = ROOT_PATH + "/modification-download-imported-file";
     public static final String DIGITAL_ASSET_STORE_HEARTBEAT = ROOT_PATH + "/das/heartbeat";
     public static final String DIGITAL_ASSET_STORE_UPDATE_HR_STATUS = ROOT_PATH + "/das/update-hr-status";
-
+    public static final String DOWNLOAD = ROOT_PATH + "/download";
 }

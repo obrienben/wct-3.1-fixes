@@ -31,7 +31,7 @@ public class TargetInstanceDisplayHandlerTest extends BaseWCTTest<TargetInstance
 	public TargetInstanceDisplayHandlerTest()
 	{
 		super(TargetInstanceDisplayHandler.class,
-                "/org/webcurator/ui/target/controller/TargetInstanceDisplayHandlerTest.xml");
+				"/org/webcurator/ui/target/controller/TargetInstanceDisplayHandlerTest.xml");
 	}
 
 	public void setUp() throws Exception
@@ -102,7 +102,7 @@ public class TargetInstanceDisplayHandlerTest extends BaseWCTTest<TargetInstance
 		aCmd.setCmd(TargetInstanceCommand.ACTION_EDIT);
 		aCmd.setDisplay(newDisplay);
 		aCmd.setDisplayNote(newNote);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		testInstance.processTab(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		assertTrue(targetInstance.getDisplay() == newDisplay);
 		assertTrue(targetInstance.getDisplayNote().equals(newNote));
@@ -143,7 +143,7 @@ public class TargetInstanceDisplayHandlerTest extends BaseWCTTest<TargetInstance
 		tc.setDefaultCommandClass(org.webcurator.ui.target.command.TargetInstanceCommand.class);
 
 		Tab currentTab = tabs.get(1);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		ModelAndView mav = testInstance.preProcessNextTab(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		assertTrue(((TargetInstanceCommand)mav.getModel().get("command")).getDisplay() == targetInstance.getDisplay());
 		assertTrue(((TargetInstanceCommand)mav.getModel().get("command")).getDisplayNote().equals(targetInstance.getDisplayNote()));
@@ -173,7 +173,7 @@ public class TargetInstanceDisplayHandlerTest extends BaseWCTTest<TargetInstance
 
 		Tab currentTab = tabs.get(1);
 		aCmd.setCmd(TargetInstanceCommand.ACTION_EDIT);
-        BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
+		BindingResult bindingResult = new BindException(aCmd, aCmd.getCmd());
 		ModelAndView mav = testInstance.processOther(tc, currentTab, aReq, aResp, aCmd, bindingResult);
 		assertTrue(mav != null);
 	}
@@ -199,5 +199,4 @@ public class TargetInstanceDisplayHandlerTest extends BaseWCTTest<TargetInstance
 		TargetInstanceManager targetInstanceManager = new MockTargetInstanceManager(testFile);
 		testInstance.setTargetInstanceManager(targetInstanceManager);
 	}
-
 }

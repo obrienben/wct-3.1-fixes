@@ -31,9 +31,12 @@ import org.webcurator.domain.model.core.HarvestResultDTO;
  * The <code>DigitalAssetStore</code> interface is used by the WCT Core and
  * WCT Harvest Agent to interact with the digital asset store component.
  *
- * @author bbeaumont
  */
 public interface DigitalAssetStore {
+
+    String FILE_UPLOAD_MODE_COPY = "copy";
+    String FILE_UPLOAD_MODE_STREAM = "stream";
+
     /**
      * Retrieve a resource from the Digital Asset Store. The resource is
      * returned as a SOAP attachment and written to disk for use. This is ideal
@@ -78,20 +81,6 @@ public interface DigitalAssetStore {
      */
     List<Header> getHeaders(long targetInstanceId, int harvestResultNumber, String resourceUrl) throws DigitalAssetStoreException;
 
-
-    /**
-     * Save an array of files to the digital asset store. The files are
-     * saved to the first harvest result, so this method should be used
-     * only for files coming directly from the Harvest Agent.
-     *
-     * @param targetInstanceName The OID of the target instance to save the files to.
-     * @param paths              An array of files to send to the asset store.
-     * @throws DigitalAssetStoreException if there are any errors.
-     */
-    void save(String targetInstanceName, List<Path> paths) throws DigitalAssetStoreException;
-
-    void save(String targetInstanceName, Path path) throws DigitalAssetStoreException;
-
     /**
      * Save an array of files to the digital asset store. The files are
      * saved to the first harvest result, so this method should be used
@@ -100,11 +89,9 @@ public interface DigitalAssetStore {
      * @param targetInstanceName The OID of the target instance to save the files to.
      * @param directory          The subdirectory under the target instance
      *                           directory to which to save the files.
-     * @param paths              An array of files to send to the asset store.
+     * @param path              The files to send to the asset store.
      * @throws DigitalAssetStoreException if there are any errors.
      */
-    void save(String targetInstanceName, String directory, List<Path> paths) throws DigitalAssetStoreException;
-
     void save(String targetInstanceName, String directory, Path path) throws DigitalAssetStoreException;
 
     /**

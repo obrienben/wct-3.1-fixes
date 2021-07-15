@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.bind.annotation.*;
+import org.webcurator.core.coordinator.WctCoordinatorPaths;
 import org.webcurator.core.exceptions.DigitalAssetStoreException;
 import org.webcurator.core.store.DigitalAssetStore;
+import org.webcurator.core.store.DigitalAssetStoreHarvestSaveDTO;
 import org.webcurator.core.store.DigitalAssetStorePaths;
 import org.webcurator.core.visualization.VisualizationConstants;
 import org.webcurator.core.visualization.modification.metadata.ModifyApplyCommand;
@@ -17,7 +19,12 @@ import org.webcurator.domain.model.core.harvester.store.HarvestStoreDTO;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.File;
 import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.URLDecoder;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,11 +50,12 @@ public class ArcDigitalAssetStoreController implements DigitalAssetStore {
                              HttpServletResponse rsp) throws DigitalAssetStoreException {
         log.debug("Get resource, target-instance-id: {}, harvest-result-number: {}, resource-url: {}", targetInstanceId, harvestResultNumber, resourceUrl);
         Path path = getResource(targetInstanceId, harvestResultNumber, URLDecoder.decode(resourceUrl));
-        if (path==null){
+        if (path == null) {
             return;
         }
         try {
             Files.copy(path, rsp.getOutputStream());
+            Files.deleteIfExists(path);
         } catch (IOException e) {
             throw new DigitalAssetStoreException(e.getMessage());
         }
@@ -149,40 +157,31 @@ public class ArcDigitalAssetStoreController implements DigitalAssetStore {
     }
 
     @RequestMapping(path = DigitalAssetStorePaths.SAVE, method = {RequestMethod.POST, RequestMethod.GET})
-    public void saveExternal(@PathVariable(value = "target-instance-name") String targetInstanceName,
-                             @RequestBody HarvestStoreDTO requestBody) throws DigitalAssetStoreException {
-        log.debug("Save harvest, target-instance-name: {}", targetInstanceName);
-        if (requestBody.getDirectory() == null) {
-            if (requestBody.getPathFromPath() != null) {
-                save(targetInstanceName, requestBody.getPathFromPath());
-            } else if (requestBody.getPathsFromPath() != null) {
-                save(targetInstanceName, requestBody.getPathsFromPath());
+    public void externalSave(@RequestBody DigitalAssetStoreHarvestSaveDTO dto) throws DigitalAssetStoreException {
+        log.debug("Save harvest, {}", dto.toString());
+        File f = new File(dto.getFilePath());
+        if (dto.getFileUploadMode().equalsIgnoreCase(FILE_UPLOAD_MODE_STREAM)) {
+            String link = String.format("%s%s?filePath=%s", dto.getHarvestBaseUrl(), WctCoordinatorPaths.DOWNLOAD, dto.getFilePath());
+            URLConnection conn = null;
+
+            try {
+                URL url = URI.create(link).toURL();
+                conn = url.openConnection();
+                conn.setRequestProperty("Content-Type", "application/octet-stream");
+                conn.setDoInput(true);
+                conn.setDoOutput(true);
+
+                arcDigitalAssetStoreService.save(dto.getTargetInstanceName(), dto.getDirectory(), f.getName(), conn.getInputStream());
+                conn.getInputStream().close();
+            } catch (IOException e) {
+                log.error("Download file from harvest agent failed", e);
+                throw new DigitalAssetStoreException(e);
+            } finally {
+                if (conn != null) ((HttpURLConnection) conn).disconnect();
             }
         } else {
-            if (requestBody.getPathFromPath() != null) {
-                save(targetInstanceName, requestBody.getDirectory(), requestBody.getPathFromPath());
-            } else if (requestBody.getPathsFromPath() != null) {
-                save(targetInstanceName, requestBody.getDirectory(), requestBody.getPathsFromPath());
-            }
+            save(dto.getTargetInstanceName(), dto.getDirectory(), f.toPath());
         }
-    }
-
-    @Override
-    public void save(String targetInstanceName, List<Path> paths) throws DigitalAssetStoreException {
-        log.debug("Save, targetInstanceName: {}, paths: {}", targetInstanceName, Arrays.toString(paths.toArray()));
-        arcDigitalAssetStoreService.save(targetInstanceName, paths);
-    }
-
-    @Override
-    public void save(String targetInstanceName, Path path) throws DigitalAssetStoreException {
-        log.debug("Save, targetInstanceName: {}, path: {}", targetInstanceName, path.toFile().getAbsolutePath());
-        arcDigitalAssetStoreService.save(targetInstanceName, path);
-    }
-
-    @Override
-    public void save(String targetInstanceName, String directory, List<Path> paths) throws DigitalAssetStoreException {
-        log.debug("Save, targetInstanceName: {}, directory: {}, paths: {}", targetInstanceName, directory, Arrays.toString(paths.toArray()));
-        arcDigitalAssetStoreService.save(targetInstanceName, directory, paths);
     }
 
     @Override
