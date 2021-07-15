@@ -7,10 +7,8 @@ import java.util.*;
 import org.junit.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
-import org.webcurator.domain.model.core.ArcHarvestResult;
 import org.webcurator.test.BaseWCTTest;
 import org.webcurator.core.archive.*;
 import org.webcurator.core.scheduler.MockTargetInstanceManager;
@@ -47,7 +45,7 @@ public class ArchiveControllerTest extends BaseWCTTest<ArchiveController>{
 			MockHttpServletResponse response = new MockHttpServletResponse();
 
 			List<HarvestResult> harvestResults = new ArrayList<HarvestResult>();
-			HarvestResult hr = new ArcHarvestResult();
+			HarvestResult hr = new HarvestResult();
 			hr.setHarvestNumber(1);
 			harvestResults.add(hr);
 
@@ -111,7 +109,7 @@ public class ArchiveControllerTest extends BaseWCTTest<ArchiveController>{
 			MockHttpServletResponse response = new MockHttpServletResponse();
 
 			List<HarvestResult> harvestResults = new ArrayList<HarvestResult>();
-			HarvestResult hr = new ArcHarvestResult();
+			HarvestResult hr = new HarvestResult();
 			hr.setHarvestNumber(1);
 			harvestResults.add(hr);
 
@@ -142,20 +140,22 @@ public class ArchiveControllerTest extends BaseWCTTest<ArchiveController>{
 
 	@Test
 	public final void testSetArchiveAdapter() {
+
 		archiveAdapter = new MockArchiveAdapter();
-        ReflectionTestUtils.setField(testInstance, "archiveAdapter", archiveAdapter);
+
+		testInstance.setArchiveAdapter(archiveAdapter);
 	}
 
 	@Test
 	public final void testSetTargetInstanceManager() {
 		targetInstanceManager = new MockTargetInstanceManager(testFile);
-        ReflectionTestUtils.setField(testInstance, "targetInstanceManager", targetInstanceManager);
+		testInstance.setTargetInstanceManager(targetInstanceManager);
 	}
 
 	@Test
 	public final void testSetTargetManager() {
 		targetManager = new MockTargetManager(testFile);
-        ReflectionTestUtils.setField(testInstance, "targetManager", targetManager);
+		testInstance.setTargetManager(targetManager);
 	}
 
 	@Test
@@ -173,7 +173,7 @@ public class ArchiveControllerTest extends BaseWCTTest<ArchiveController>{
 	@Test
 	public final void testSetSipBuilder()
 	{
-        ReflectionTestUtils.setField(testInstance, "sipBuilder", new MockSipBuilder(testFile));
+		testInstance.setSipBuilder(new MockSipBuilder(testFile));
 	}
 
 }

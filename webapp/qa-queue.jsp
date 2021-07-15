@@ -111,8 +111,8 @@ function showTooltip(region, targetOid, targetInstanceOid, requestType) {
 //requestType:			request for target annotations or target instance annotations
 function buildTooltip(region, targetOid, targetInstanceOid, tooltip, requestType) {
 	var request = $.ajax({
-		url: "curator/target/annotation-ajax.html",
-		type: "POST",
+		url: "<%=request.getScheme()+"://"+request.getServerName()+":"+request.getServerPort()+ request.getContextPath()%>/curator/target/annotation-ajax.html",   
+		type: "POST",   
 		data: {targetOid : targetOid, targetInstanceOid: targetInstanceOid, <%=Constants.AJAX_REQUEST_TYPE%>: requestType},
 		dataType: "html"
 	});
@@ -646,6 +646,14 @@ function clickEndorse(hrOid) {
 						  	</label>
 						</td>						
 				    </tr>
+				    <tr>
+                        <td class="searchBoxLabel" valign="top">
+                            <input type="checkbox" id="states_<%=TargetInstance.STATE_PATCHING%>" name="states" value="<%=TargetInstance.STATE_PATCHING%>" ${wct:containsObj(command.states, 'Patching') ? 'checked' : ''}>
+                            <label for="states_<%=TargetInstance.STATE_PATCHING%>">
+                            <%=TargetInstance.STATE_PATCHING%>
+                            </label>
+                        </td>
+                    </tr>
 					</table>
 				</td>				
 				
@@ -833,7 +841,7 @@ function clickEndorse(hrOid) {
 					</div>
 					</td>
 					<td class="noteImage">
-					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, <c:out value="${instance.oid}"/>, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
+					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, null, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
 						<img src="images/note_blue.gif" />
 					</div>
 					</td></tr>
@@ -854,7 +862,7 @@ function clickEndorse(hrOid) {
 					</div>
 					</td>
 					<td class="noteImage">
-					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, <c:out value="${instance.oid}"/>, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
+					<div name="target<c:out value="${instance.oid}" />" id="target<c:out value="${instance.oid}" />" onclick="showTooltip($(this), <c:out value="${instance.target.oid}"/>, null, '<%=Constants.AJAX_REQUEST_FOR_TARGET_ANNOTATIONS%>');">
 						<img src="images/note_blue.gif" />
 					</div>
 					</td></tr>
@@ -944,7 +952,7 @@ function clickEndorse(hrOid) {
 			<c:if test="${instance.state eq 'Scheduled'}">
 				<authority:hasUserOwnedPriv ownedObject="${instance}" privilege="<%=Privilege.LAUNCH_TARGET_INSTANCE_IMMEDIATE%>" scope="<%=Privilege.SCOPE_AGENCY%>">
 				<img src="images/action-sep-line.gif" alt="" width="7" height="19" border="0" />
-				<a href="curator/target/ti-harvest-now.html?targetInstanceId=${instance.oid}"><img src="images/resume-icon.gif" title="Harvest Now" alt="click here to Harvest this item" width="21" height="20" border="0"></a>
+				<a href="curator/target/ti-harvest-now.html?targetInstanceId=${instance.oid}&harvestResultId=-1"><img src="images/resume-icon.gif" title="Harvest Now" alt="click here to Harvest this item" width="21" height="20" border="0"></a>
 				</authority:hasUserOwnedPriv>
 				<authority:showControl ownedObject="${instance}" privileges='<%=Privilege.MANAGE_TARGET_INSTANCES + ";" + Privilege.MANAGE_WEB_HARVESTER%>' editMode="true">
 				    <authority:show>

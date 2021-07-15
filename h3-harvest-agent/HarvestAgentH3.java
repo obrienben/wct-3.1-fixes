@@ -15,9 +15,9 @@
  */
 package org.webcurator.core.harvester.agent;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.archive.util.FileUtils;
 import org.netarchivesuite.heritrix3wrapper.ScriptResult;
 import org.webcurator.core.harvester.Constants;
 import org.webcurator.core.harvester.HarvesterType;
@@ -65,9 +65,17 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
      */
     private HarvesterType harvesterType;
     /**
-     * the base url of the harvest agent.
+     * the protocol type of the harvest agent.
      */
-    private String baseUrl = "";
+    private String scheme = "";
+    /**
+     * the host name of the harvest agent.
+     */
+    private String host = "";
+    /**
+     * the harvest agent control port.
+     */
+    private int port = 0;
     /**
      * the harvest agent service endpoint.
      */
@@ -123,16 +131,6 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
 
         if (log.isDebugEnabled()) {
             log.debug("Initiating harvest for " + aJob + " " + params.get("seeds"));
-        }
-
-        if (harvesters.containsKey(aJob)){
-            harvester = harvesters.get(aJob);
-            if (harvester !=null && harvester.getStatus() !=null) {
-                log.error("Failed to initiate harvest for " + aJob + " due to harvester is existing, harvester.status: " + harvester.getStatus().getStatus());
-            }else{
-                log.error("Failed to initiate harvest for " + aJob + " due to harvester is existing");
-            }
-            return;
         }
 
         try {
@@ -257,7 +255,7 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         removeHarvester(aJob);
 
         if (harvestDir != null) {
-            boolean deleted = FileUtils.deleteDir(harvestDir);
+            boolean deleted = FileUtils.deleteQuietly(harvestDir);
             if (deleted) {
                 log.info("Deleted harvest directory=" + harvestDir.getAbsolutePath());
             } else {
@@ -291,20 +289,15 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         return toFileArray(getFileList(baseDir, filters));
     }
 
-    /**
-     * Returns empty list if the input directory does not exist (sometimes a crawl does not result in
-     * a WARC file, in which case the warcs subdirectory of the H3 job directory will not exist)
-     */
     private List<File> getFileList(File baseDir, FileFilter... filters) {
         List<File> l = new LinkedList<File>();
         File[] files = baseDir.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                for (FileFilter filter : filters) {
-                    if (filter.accepts(f)) {
-                        l.add(f);
-                        break;
-                    }
+        //TODO - What if no warcs are generated? This throws null pointer otherwise
+        for (File f : files) {
+            for (FileFilter filter : filters) {
+                if (filter.accepts(f)) {
+                    l.add(f);
+                    break;
                 }
             }
         }
@@ -362,7 +355,6 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         }
 
         List das = getHarvester(aJob).getHarvestDigitalAssetsDirs();
-        HarvestResultDTO ahr = new HarvestResultDTO();
 
 
         // Make sure that the files are not longer in use.
@@ -375,12 +367,14 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
             log.info("Getting digital assets to send to store for job " + aJob);
 
             try {
+                // BE AWARE - if a harvest is stopped before any warcs are written then a null pointer exception can be thrown
+                // when getting the file list of the warc dir, because the warc dir may not exist -causing an infinite loop.
                 File[] fileList = getFileArray(das, new NegateFilter(new ExtensionFileFilter(Constants.EXTN_OPEN_ARC)));
                 int numberOfFiles = fileList.length;
 
                 for (int i = 0; i < numberOfFiles; i++) {
                     log.debug("Sending ARC " + (i + 1) + " of " + numberOfFiles + " to digital asset store for job " + aJob);
-                    digitalAssetStore.save(aJob, Constants.DIR_ORIGINAL_HARVEST, fileList[i].toPath());
+                    digitalAssetStore.save(aJob, fileList[i].toPath());
                     log.debug("Finished sending ARC " + (i + 1) + " of " + numberOfFiles + " to digital asset store for job " + aJob);
                 }
 
@@ -433,9 +427,20 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         if (aFailureStep <= FAILED_ON_SEND_RESULT) {
             try {
                 log.info("Sending harvest result to WCT for job " + aJob);
-                ahr = new HarvestResultDTO();
+                long targetInstanceId = 0;
+                int harvestResultNumber = 1;
+                if (aJob.startsWith("mod")) {
+                    String[] items = aJob.split("_");
+                    targetInstanceId = Long.parseLong(items[1]);
+                    harvestResultNumber = Integer.parseInt(items[2]);
+                } else {
+                    targetInstanceId = Long.parseLong(aJob.substring(aJob.lastIndexOf("-") + 1));
+                }
+
+                HarvestResultDTO ahr = new HarvestResultDTO();
                 ahr.setCreationDate(new Date());
-                ahr.setTargetInstanceOid(new Long(aJob));
+                ahr.setTargetInstanceOid(targetInstanceId);
+                ahr.setHarvestNumber(harvestResultNumber);
                 ahr.setProvenanceNote(provenanceNote);
                 harvestCoordinatorNotifier.harvestComplete(ahr);
             } catch (Exception e) {
@@ -458,7 +463,9 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
     public HarvestAgentStatusDTO getStatus() {
         //TODO - might need adjustment for when harvest has stopped/gone
         HarvestAgentStatusDTO status = new HarvestAgentStatusDTO();
-        status.setBaseUrl(baseUrl);
+        status.setScheme(scheme);
+        status.setHost(host);
+        status.setPort(port);
         status.setService(service);
         status.setLogReaderService(logReaderService);
         status.setName(name);
@@ -632,6 +639,24 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         harvestCoordinatorNotifier.heartbeat(getStatus());
     }
 
+    public String getScheme() {
+        return scheme;
+    }
+
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
+    }
+
+    /**
+     * @param aHost The host to set.
+     */
+    public void setHost(String aHost) {
+        this.host = aHost;
+    }
+
+    public String getHost() {
+        return host;
+    }
 
     /**
      * @param aMaxHarvests The maxHarvests to set.
@@ -654,12 +679,11 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
         return harvesterType;
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
-    }
-
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    /**
+     * @param aPort The port to set.
+     */
+    public void setPort(int aPort) {
+        this.port = aPort;
     }
 
     /**
@@ -893,7 +917,7 @@ public class HarvestAgentH3 extends AbstractHarvestAgent implements LogProvider 
                 if (log.isDebugEnabled()) {
                     log.debug("About to purge aborted target instance dir " + toPurge.toString());
                 }
-                FileUtils.deleteDir(toPurge);
+                FileUtils.deleteDirectory(toPurge);
             }
         } catch (Exception e) {
             if (log.isDebugEnabled()) {

@@ -16,18 +16,18 @@
 package org.webcurator.core.harvester.coordinator;
 
 import java.io.File;
-import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 
 import org.webcurator.core.check.CheckNotifier;
+import org.webcurator.core.visualization.modification.metadata.ModifyApplyCommand;
+import org.webcurator.core.visualization.modification.metadata.ModifyResult;
+import org.webcurator.domain.HarvestCoordinatorDAO;
 import org.webcurator.domain.model.core.HarvestResult;
 import org.webcurator.domain.model.core.TargetInstance;
 import org.webcurator.domain.model.core.harvester.agent.HarvestAgentStatusDTO;
 import org.webcurator.domain.model.core.LogFilePropertiesDTO;
 import org.webcurator.domain.model.dto.QueuedTargetInstanceDTO;
-
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 
 /**
  * The HarvestCoordinator is responsible for managing the scheduling, monitoring and completion
@@ -37,7 +37,7 @@ import javax.servlet.http.HttpServletResponse;
  *
  * @author nwaight
  */
-public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier, IndexerService {
+public interface HarvestCoordinator extends HarvestAgentListener, HarvestCoordinatorDAO, CheckNotifier {
     /**
      * Process any TargetInstances that are ready to be processed.
      */
@@ -70,11 +70,28 @@ public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier,
     void checkForBandwidthTransition();
 
     /**
+     * Return the current maximum bandwidth setting.
+     *
+     * @return the current maximum bandwidth
+     */
+    long getCurrentGlobalMaxBandwidth();
+
+    /**
+     * Return a list of harvest agents with their last reported status.
+     *
+     * @return a list of harvest agent status's
+     */
+    HashMap<String, HarvestAgentStatusDTO> getHarvestAgents();
+
+    /**
      * Send recover harvest information to Harvest Agent
-     * @param baseUrl
+     *
+     * @param scheme
+     * @param host
+     * @param port
      * @param service
      */
-    void recoverHarvests(String baseUrl, String service);
+    void recoverHarvests(String scheme, String host, int port, String service);
 
     /**
      * Allocate the target instance to the specified harvest agent.
@@ -83,6 +100,18 @@ public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier,
      * @param aHarvestAgent   the harvest agent.
      */
     void harvest(TargetInstance aTargetInstance, HarvestAgentStatusDTO aHarvestAgent);
+
+
+    /**
+     * Specify the seeds and profile, and allocate the target instance to an idle harvest agent.
+     *
+     * @param targetInstance:       the target instance to modify
+     * @param harvestAgentStatusDTO the harvest agent
+     * @return the process result
+     */
+    boolean patchHarvest(TargetInstance targetInstance, HarvestResult hr, HarvestAgentStatusDTO harvestAgentStatusDTO);
+
+    ModifyResult patchHarvest(ModifyApplyCommand cmd);
 
     /**
      * Pause a TargetInstance that is in the process or being harvested
@@ -137,6 +166,20 @@ public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier,
      * @return Returns true if the Queue is paused.
      */
     public boolean isQueuePaused();
+
+    /**
+     * @return Returns the maxBandwidthPercent.
+     */
+    int getMaxBandwidthPercent();
+
+    /**
+     * Check to see if adding this target instance to be harvested will mean that
+     * the the minimum bandwidth will not be availabile to this or other running jobs
+     *
+     * @param aTargetInstance the target instance to check
+     * @return true if the minimum bandwidth will be available
+     */
+    boolean isMiniumBandwidthAvailable(TargetInstance aTargetInstance);
 
     /**
      * Send the latest profile to the Harvest Agent for a specified target instance
@@ -254,47 +297,6 @@ public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier,
      */
     File getLogfile(TargetInstance aTargetInstance, String aFilename);
 
-    /**
-     * Complete the Archiving process
-     */
-    void completeArchiving(Long targetInstanceOid, String archiveIID);
-
-    /**
-     * Failed to complete the Archiving process
-     */
-    void failedArchiving(Long targetInstanceOid, String message);
-
-    /**
-     * Force re-indexing of the specified HarvestResult
-     *
-     * @param aArcHarvestResult The result to re-index.
-     * @return true if a reIndex was initialised
-     */
-    Boolean reIndexHarvestResult(HarvestResult aArcHarvestResult);
-
-    /**
-     * Remove indexes for the target instance. Most indexers do no action, however
-     * a wayback indexer needs to remove arc files from the local wayback BDB index
-     *
-     * @param ti The target instance to remove the indexes for
-     * @return void
-     */
-    void removeIndexes(TargetInstance ti);
-
-    void removeIndexes(HarvestResult hr);
-
-    /**
-     * Return the hop path for the specified Url by parsing the sorted crawl.log
-     * for the specified TargetInstance.
-     *
-     * @param aTargetInstance the TargetInstance to return the hop path lines for
-     * @param aFileName       the name of the sorted crawl.log file to derive the hop path from
-     * @param aUrl            the Url to search for the hop path with
-     * @return the lines for the hop path
-     */
-    List<String> getHopPath(TargetInstance aTargetInstance, String aFileName, String aUrl);
-
-    public void runQaRecommentationService(TargetInstance ti);
 
     void pauseAgent(String agentName);
 
@@ -305,6 +307,4 @@ public interface HarvestCoordinator extends HarvestAgentListener, CheckNotifier,
     boolean isHarvestOptimizationEnabled();
 
     int getHarvestOptimizationLookAheadHours();
-
-    void dasDownloadFile(String fileName, HttpServletRequest req, HttpServletResponse rsp) throws IOException;
 }

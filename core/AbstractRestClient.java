@@ -9,30 +9,42 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
-import java.net.URI;
 import java.time.Duration;
 
 abstract public class AbstractRestClient {
     protected Logger log = LoggerFactory.getLogger(getClass());
 
-    /*
-     * the service url for the server, e.x: https://localhost:8080/wct.
+    /**
+     * the protocol type for the client.
      */
-    protected String baseUrl;
-    protected RestTemplateBuilder restTemplateBuilder;
+    protected String scheme = "http";
+    /**
+     * the host name or ip-address for the client.
+     */
+    protected String host = "localhost";
+    /**
+     * the port number for the client.
+     */
+    protected int port = 8080;
 
-    public AbstractRestClient() {
+    protected final RestTemplateBuilder restTemplateBuilder;
+
+
+    public AbstractRestClient(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
+        this.scheme = scheme;
+        this.host = host;
+        this.port = port;
+        this.restTemplateBuilder = restTemplateBuilder;
+        this.restTemplateBuilder.errorHandler(new RestClientResponseHandler())
+                .setConnectTimeout(Duration.ofSeconds(15L));
     }
 
-    public AbstractRestClient(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
-        this.baseUrl = baseUrl;
-        this.restTemplateBuilder = restTemplateBuilder == null ? new RestTemplateBuilder() : restTemplateBuilder;
-        this.restTemplateBuilder.errorHandler(new RestClientResponseHandler());
-        this.restTemplateBuilder.setConnectTimeout(Duration.ofSeconds(15L));
+    public String baseUrl() {
+        return String.format("%s://%s:%d", scheme, host, port);
     }
 
     public String getUrl(String appendUrl) {
-        return String.format("%s%s", this.baseUrl, appendUrl);
+        return String.format("%s%s", this.baseUrl(), appendUrl);
     }
 
     public HttpEntity<String> createHttpRequestEntity(Object objRequest) {
@@ -50,11 +62,11 @@ abstract public class AbstractRestClient {
 
         String json = this.encode2json(objRequest);
 
-        HttpEntity<String> request;
+        HttpEntity<String> request = null;
         if (headers == null) {
-            request = new HttpEntity<>(json);
+            request = new HttpEntity<String>(json);
         } else {
-            request = new HttpEntity<>(json, headers);
+            request = new HttpEntity<String>(json, headers);
         }
 
         return request;
@@ -62,7 +74,7 @@ abstract public class AbstractRestClient {
 
     public String encode2json(Object objRequest) {
         ObjectMapper objectMapper = new ObjectMapper();
-        String jsonRequest;
+        String jsonRequest = null;
         try {
             jsonRequest = objectMapper.writeValueAsString(objRequest);
             log.debug(jsonRequest);
@@ -71,57 +83,38 @@ abstract public class AbstractRestClient {
             return null;
         }
 
-        return jsonRequest;
+        return jsonRequest.toString();
     }
 
     public String toString() {
-        return String.format("%s@%s", this.getClass().getName(), this.baseUrl);
+        return String.format("%s@%s",this.getClass().getName(), this.baseUrl());
     }
 
-    public String getBaseUrl() {
-        return baseUrl;
+    public String getScheme() {
+        return scheme;
     }
 
-    public void setBaseUrl(String baseUrl) {
-        this.baseUrl = baseUrl;
+    public void setScheme(String scheme) {
+        this.scheme = scheme;
+    }
+
+    public String getHost() {
+        return host;
+    }
+
+    public void setHost(String host) {
+        this.host = host;
+    }
+
+    public int getPort() {
+        return port;
+    }
+
+    public void setPort(int port) {
+        this.port = port;
     }
 
     public RestTemplateBuilder getRestTemplateBuilder() {
         return restTemplateBuilder;
-    }
-
-    public void setRestTemplateBuilder(RestTemplateBuilder restTemplateBuilder) {
-        this.restTemplateBuilder = restTemplateBuilder;
-    }
-
-    public String getScheme() {
-        try {
-            URI uri = URI.create(baseUrl);
-            return uri.getScheme();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public String getHost() {
-        try {
-            URI uri = URI.create(baseUrl);
-            return uri.getHost();
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    public int getPort() {
-        try {
-            URI uri = URI.create(baseUrl);
-            if (uri.getPort() > 0) {
-                return uri.getPort();
-            } else {
-                return 80;
-            }
-        } catch (Exception e) {
-            return -1;
-        }
     }
 }

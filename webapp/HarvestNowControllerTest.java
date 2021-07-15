@@ -12,15 +12,14 @@ import org.junit.Test;
 import org.mockito.Mockito;
 import org.springframework.context.MockMessageSource;
 import org.springframework.mock.web.MockHttpServletRequest;
-import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.servlet.ModelAndView;
 import org.webcurator.core.archive.MockSipBuilder;
 import org.webcurator.core.harvester.agent.MockHarvestAgentFactory;
+import org.webcurator.core.harvester.coordinator.HarvestAgentManagerImpl;
 import org.webcurator.core.harvester.coordinator.HarvestBandwidthManager;
-import org.webcurator.core.harvester.coordinator.HarvestCoordinatorImpl;
-import org.webcurator.core.harvester.coordinator.MockHarvestAgentManager;
+import org.webcurator.core.coordinator.WctCoordinatorImpl;
 import org.webcurator.core.notification.MockInTrayManager;
 import org.webcurator.core.scheduler.MockTargetInstanceManager;
 import org.webcurator.core.targets.MockTargetManager;
@@ -32,12 +31,11 @@ import org.webcurator.domain.model.core.harvester.agent.HarvesterStatusDTO;
 import org.webcurator.test.BaseWCTTest;
 import org.webcurator.ui.target.command.TargetInstanceCommand;
 import org.webcurator.common.util.DateUtils;
-import org.webcurator.ui.target.validator.MockHarvestNowValidator;
 
 public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> {
 
 	private TargetInstanceDAO tidao;
-	private HarvestCoordinatorImpl hc;
+	private WctCoordinatorImpl hc;
 	public HarvestNowControllerTest()
 	{
 		super(HarvestNowController.class,
@@ -58,13 +56,13 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 
 		tim.setTargetInstanceDao(tidao);
 
-		hc = new HarvestCoordinatorImpl();
+		hc = new WctCoordinatorImpl();
 
 		hc.setTargetInstanceManager(tim);
 		hc.setTargetManager(new MockTargetManager(testFile));
 		hc.setInTrayManager(new MockInTrayManager(testFile));
 		hc.setSipBuilder(new MockSipBuilder(testFile));
-		MockHarvestAgentManager harvestAgentManager = new MockHarvestAgentManager();
+		HarvestAgentManagerImpl harvestAgentManager = new HarvestAgentManagerImpl();
 		harvestAgentManager.setHarvestAgentFactory(new MockHarvestAgentFactory());
 		harvestAgentManager.setTargetInstanceManager(tim);
 		harvestAgentManager.setTargetInstanceDao(tidao);
@@ -74,10 +72,9 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		HarvestBandwidthManager mockHarvestBandwidthManager = Mockito.mock(HarvestBandwidthManager.class);
 		hc.setHarvestBandwidthManager(mockHarvestBandwidthManager);
 
-		testInstance.setHarvestCoordinator(hc);
-		testInstance.setTargetInstanceManager(tim);
+		testInstance.setWctCoordinator(hc);
+		testInstance.setTargetInstanceDAO(tidao);
 		testInstance.setMessageSource(new MockMessageSource());
-		testInstance.setHarvestAgentManager(harvestAgentManager);
 	}
 
 	@Test
@@ -98,9 +95,6 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		TargetInstance ti = tidao.load(5001L);
 		ti.setState(TargetInstance.STATE_SCHEDULED);
 
-		BindingResult bindingResult;
-
-
 		HashMap<String, HarvesterStatusDTO> aHarvesterStatus = new HashMap<String, HarvesterStatusDTO>();
 
 		aHarvesterStatus.put("Target-5002", getStatusDTO("Running"));
@@ -116,10 +110,7 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setCmd(TargetInstanceCommand.ACTION_HARVEST);
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
-
-        bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
-		ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
-		ReflectionTestUtils.setField(testInstance, "harvestCoordinator", hc);
+        BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
 
 		ModelAndView mav = testInstance.processFormSubmission(aCmd, bindingResult, aReq);
 		assertTrue(mav != null);
@@ -150,9 +141,6 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
         BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
-
-        ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
-        ReflectionTestUtils.setField(testInstance, "harvestCoordinator", hc);
 
 		try
 		{
@@ -191,9 +179,6 @@ public class HarvestNowControllerTest extends BaseWCTTest<HarvestNowController> 
 		aCmd.setAgent("Test Agent");
 		aCmd.setTargetInstanceId(5001L);
         BindingResult bindingResult = new BindException(aCmd, TargetInstanceCommand.ACTION_HARVEST);
-
-        ReflectionTestUtils.setField(testInstance, "harvestNowValidator", new MockHarvestNowValidator());
-        ReflectionTestUtils.setField(testInstance, "harvestCoordinator", hc);
 
 		ModelAndView mav = testInstance.processFormSubmission(aCmd, bindingResult, aReq);
 		assertTrue(mav != null);

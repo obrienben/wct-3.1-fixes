@@ -21,6 +21,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 import org.webcurator.core.check.CheckNotifier;
+import org.webcurator.core.coordinator.WctCoordinatorPaths;
 import org.webcurator.core.exceptions.WCTRuntimeException;
 import org.webcurator.core.harvester.agent.HarvestAgent;
 import org.webcurator.core.rest.AbstractRestClient;
@@ -46,27 +47,26 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
      */
     public String attemptRecovery = "false";
 
-    public HarvestCoordinatorNotifier(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
-        super(baseUrl, restTemplateBuilder);
+    public HarvestCoordinatorNotifier(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
+        super(scheme, host, port, restTemplateBuilder);
     }
 
     /* (non-Javadoc)
      * @see org.webcurator.core.harvester.coordinator.HarvestAgentListener#heartbeat(org.webcurator.core.harvester.agent.HarvestAgentStatus)
      */
 
-    public void heartbeat(HarvestAgentStatusDTO aStatus){
+    public void heartbeat(HarvestAgentStatusDTO aStatus) {
         try {
-            log.info("WCT: Start of heartbeat");
+            log.debug("WCT: Start of heartbeat");
 
             RestTemplate restTemplate = restTemplateBuilder.build();
 
-            String uri = getUrl(HarvestCoordinatorPaths.HEARTBEAT);
+            String uri = getUrl(WctCoordinatorPaths.HEARTBEAT);
 
             HttpEntity<String> request = this.createHttpRequestEntity(aStatus);
 
-            restTemplate.postForObject(uri, request, String.class);
-            log.info("WCT: End of heartbeat");
-
+            restTemplate.postForObject(uri, request, Void.class);
+            log.debug("WCT: End of heartbeat");
         } catch (Exception ex) {
             log.error("Heartbeat Notification failed : " + ex.getMessage(), ex);
         }
@@ -81,10 +81,10 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
                 HttpEntity<String> request = this.createHttpRequestEntity(aStatus);
 
                 RestTemplate restTemplate = restTemplateBuilder.build();
-                UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(HarvestCoordinatorPaths.RECOVERY));
+                UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.RECOVERY));
                 URI uri = uriComponentsBuilder.buildAndExpand().toUri();
 
-                restTemplate.postForObject(uri, request, String.class);
+                restTemplate.postForObject(uri, request, Void.class);
                 log.debug("WCT: End of requestRecovery");
 
                 setAttemptRecovery("false");
@@ -93,8 +93,6 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
             log.error("Recovery Request failed.");
 
             throw new HttpClientErrorException(ex.getStatusCode());
-        } catch (Exception ex) {
-            log.error("Recovery Request failed.");
         }
     }
 
@@ -103,17 +101,17 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
      */
     public void harvestComplete(HarvestResultDTO aResult) {
         try {
-            log.info("WCT: Start of harvestComplete");
+            log.debug("WCT: Start of harvestComplete");
 
             HttpEntity<String> request = this.createHttpRequestEntity(aResult);
 
             RestTemplate restTemplate = restTemplateBuilder.build();
-            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(HarvestCoordinatorPaths.HARVEST_COMPLETE));
+            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.HARVEST_COMPLETE));
             URI uri = uriComponentsBuilder.buildAndExpand().toUri();
 
-            restTemplate.postForObject(uri, request, String.class);
+            restTemplate.postForObject(uri, request, Void.class);
 
-            log.info("WCT: End of HarvestComplete");
+            log.debug("WCT: End of HarvestComplete");
         } catch (Exception ex) {
             log.error("Harvest Complete Notification failed : " + ex.getMessage(), ex);
             throw new WCTRuntimeException(ex);
@@ -128,12 +126,12 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
             log.debug("WCT: Start of notification");
 
             RestTemplate restTemplate = restTemplateBuilder.build();
-            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(HarvestCoordinatorPaths.NOTIFICATION_BY_OID))
+            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.NOTIFICATION_BY_OID))
                     .queryParam("target-instance-oid", aTargetInstanceOid)
                     .queryParam("notification-category", notificationCategory)
                     .queryParam("message-type", aMessageType);
 
-            restTemplate.postForObject(uriComponentsBuilder.buildAndExpand().toUri(), null, String.class);
+            restTemplate.postForObject(uriComponentsBuilder.buildAndExpand().toUri(), null, Void.class);
 
             log.debug("WCT: End of notification");
         } catch (Exception ex) {
@@ -149,7 +147,7 @@ public class HarvestCoordinatorNotifier extends AbstractRestClient implements Ha
             log.debug("WCT: Start of notification");
 
             RestTemplate restTemplate = restTemplateBuilder.build();
-            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(HarvestCoordinatorPaths.NOTIFICATION_BY_SUBJECT))
+            UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.NOTIFICATION_BY_SUBJECT))
                     .queryParam("subject", agent.getName() + " " + aSubject)
                     .queryParam("notification-category", notificationCategory)
                     .queryParam("message", aMessage);

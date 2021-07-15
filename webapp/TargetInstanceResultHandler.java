@@ -21,26 +21,22 @@ import java.util.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.propertyeditors.CustomNumberEditor;
 import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
 import org.springframework.validation.BindException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
 import org.springframework.web.bind.ServletRequestDataBinder;
 import org.springframework.web.servlet.ModelAndView;
 import org.webcurator.core.agency.AgencyUserManager;
+import org.webcurator.core.coordinator.WctCoordinator;
 import org.webcurator.core.exceptions.WCTRuntimeException;
-import org.webcurator.core.harvester.coordinator.HarvestAgentManager;
-import org.webcurator.core.harvester.coordinator.HarvestBandwidthManager;
-import org.webcurator.core.harvester.coordinator.HarvestCoordinator;
-import org.webcurator.core.notification.InTrayManager;
 import org.webcurator.core.notification.InTrayManagerImpl;
 import org.webcurator.core.scheduler.TargetInstanceManager;
 import org.webcurator.core.store.DigitalAssetStore;
 import org.webcurator.core.store.DigitalAssetStoreClient;
 import org.webcurator.core.util.ApplicationContextFactory;
+import org.webcurator.domain.TargetInstanceDAO;
 import org.webcurator.domain.model.auth.Agency;
 import org.webcurator.domain.model.auth.User;
 import org.webcurator.domain.model.core.*;
@@ -60,17 +56,13 @@ import org.webcurator.ui.util.TabbedController.TabbedModelAndView;
  */
 public class TargetInstanceResultHandler extends TabHandler {
     private TargetInstanceManager targetInstanceManager;
-    private HarvestCoordinator harvestCoordinator;
-    private HarvestAgentManager harvestAgentManager;
+    private WctCoordinator wctCoordinator;
+    private TargetInstanceDAO targetInstanceDAO;
 
     /**
      * the digital asset store containing the harvests.
      */
     private DigitalAssetStore digitalAssetStore = null;
-
-    private DigitalAssetStoreClient digitalAssetStoreClient = null;
-
-    private InTrayManagerImpl inTrayManager = null;
 
     private AgencyUserManager agencyUserManager;
 
@@ -144,7 +136,7 @@ public class TargetInstanceResultHandler extends TabHandler {
         TargetInstanceCommand cmd = (TargetInstanceCommand) comm;
         if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_HARVEST)) {
             ModelAndView mav = new ModelAndView();
-            HashMap agents = harvestAgentManager.getHarvestAgents();
+            HashMap agents = wctCoordinator.getHarvestAgents();
             mav.addObject(Constants.GBL_CMD_DATA, cmd);
             mav.addObject(TargetInstanceCommand.MDL_AGENTS, agents);
             mav.setViewName(Constants.VIEW_HARVEST_NOW);
@@ -153,25 +145,19 @@ public class TargetInstanceResultHandler extends TabHandler {
         } else if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_ENDORSE)) {
             // set the ti state and the hr states
             TargetInstance ti = (TargetInstance) req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI);
-
-            //To reload  the TI to avoid the issue of "Row was updated or deleted by another transaction".
-            ti = targetInstanceManager.getTargetInstance(ti.getOid());
-
-            //To save the TI to avoid the issue of "unsaved-value mapping was incorrect".
-            targetInstanceManager.save(ti);
-
             ti.setState(TargetInstance.STATE_ENDORSED);
+
             for (HarvestResult hr : ti.getHarvestResults()) {
                 if (hr.getOid().equals(cmd.getHarvestResultId())) {
                     hr.setState(HarvestResult.STATE_ENDORSED);
                 } else {
                     if (hr.getState() != HarvestResult.STATE_REJECTED) {
                         hr.setState(HarvestResult.STATE_REJECTED);
-                        harvestCoordinator.removeIndexes(hr);
+                        wctCoordinator.removeIndexes(hr);
                     }
                 }
 
-                targetInstanceManager.save((ArcHarvestResult) hr);
+                targetInstanceManager.save((HarvestResult) hr);
             }
 
             targetInstanceManager.save(ti);
@@ -187,18 +173,12 @@ public class TargetInstanceResultHandler extends TabHandler {
         } else if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_UNENDORSE)) {
             // set the ti state and the hr states
             TargetInstance ti = (TargetInstance) req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI);
-
-            //To reload  the TI to avoid the issue of "Row was updated or deleted by another transaction".
-            ti = targetInstanceManager.getTargetInstance(ti.getOid());
-
-            //To save the TI to avoid the issue of "unsaved-value mapping was incorrect".
-            targetInstanceManager.save(ti);
-
             ti.setState(TargetInstance.STATE_HARVESTED);
+
             for (HarvestResult hr : ti.getHarvestResults()) {
                 hr.setState(0);
 
-                targetInstanceManager.save((ArcHarvestResult) hr);
+                targetInstanceManager.save((HarvestResult) hr);
             }
 
             targetInstanceManager.save(ti);
@@ -212,13 +192,6 @@ public class TargetInstanceResultHandler extends TabHandler {
         } else if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_REJECT)) {
             //	set the ti state and the hr states
             TargetInstance ti = (TargetInstance) req.getSession().getAttribute(TargetInstanceCommand.SESSION_TI);
-        	
-            //To reload  the TI to avoid the issue of "Row was updated or deleted by another transaction".
-            ti = targetInstanceManager.getTargetInstance(ti.getOid());
-
-            //To save the TI to avoid the issue of "unsaved-value mapping was incorrect".
-            targetInstanceManager.save(ti);
-
             for (HarvestResult hr : ti.getHarvestResults()) {
                 if (hr.getOid().equals(cmd.getHarvestResultId())) {
                     if (hr.getState() != HarvestResult.STATE_REJECTED) {
@@ -240,10 +213,10 @@ public class TargetInstanceResultHandler extends TabHandler {
                         hr.setState(HarvestResult.STATE_REJECTED);
                         RejReason rejReason = agencyUserManager.getRejReasonByOid(rejReasonId);
                         hr.setRejReason(rejReason);
-                        harvestCoordinator.removeIndexes(hr);
+                        wctCoordinator.removeIndexes(hr);
                     }
 
-                    targetInstanceManager.save((ArcHarvestResult) hr);
+                    targetInstanceManager.save((HarvestResult) hr);
                 }
             }
 
@@ -276,13 +249,10 @@ public class TargetInstanceResultHandler extends TabHandler {
             //Make sure any new HarvestResults are loaded
             ti = targetInstanceManager.getTargetInstance(ti.getOid());
 
-            //To save the TI to avoid the issue of "unsaved-value mapping was incorrect".
-            targetInstanceManager.save(ti);
-
             for (HarvestResult hr : ti.getHarvestResults()) {
                 if (hr.getOid().equals(cmd.getHarvestResultId()) &&
                         hr.getState() == HarvestResult.STATE_INDEXING) {
-                    reIndexSuccessful = harvestCoordinator.reIndexHarvestResult(hr);
+                    reIndexSuccessful = wctCoordinator.reIndexHarvestResult(hr);
                     break;
                 }
             }
@@ -301,6 +271,15 @@ public class TargetInstanceResultHandler extends TabHandler {
             tmav.getTabStatus().setCurrentTab(currentTab);
 
             return tmav;
+        } else if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_VIEW_PATCHING)) {
+            HarvestResult hr = targetInstanceDAO.getHarvestResult(cmd.getHarvestResultId());
+            TargetInstance ti = hr.getTargetInstance();
+
+            ModelAndView mav = new ModelAndView("patching-view-hr");
+            mav.addObject("ti", ti);
+            mav.addObject("hr", hr);
+
+            return mav;
         } else if (cmd.getCmd().equals(TargetInstanceCommand.ACTION_ARCHIVE)) {
             throw new WCTRuntimeException("Archive command processing is not implemented yet.");
         } else {
@@ -308,11 +287,12 @@ public class TargetInstanceResultHandler extends TabHandler {
         }
     }
 
+
     /**
-     * @param harvestCoordinator The harvestCoordinator to set.
+     * @param wctCoordinator The wctCoordinator to set.
      */
-    public void setHarvestCoordinator(HarvestCoordinator harvestCoordinator) {
-        this.harvestCoordinator = harvestCoordinator;
+    public void setWctCoordinator(WctCoordinator wctCoordinator) {
+        this.wctCoordinator = wctCoordinator;
     }
 
     /**
@@ -336,6 +316,15 @@ public class TargetInstanceResultHandler extends TabHandler {
         this.agencyUserManager = agencyUserManager;
     }
 
+    public TargetInstanceDAO getTargetInstanceDAO() {
+        return targetInstanceDAO;
+    }
+
+    public void setTargetInstanceDAO(TargetInstanceDAO targetInstanceDAO) {
+        this.targetInstanceDAO = targetInstanceDAO;
+    }
+
+
     protected void buildCustomDepositFormDetails(HttpServletRequest req, BindingResult bindingResult, TargetInstance ti, TabbedModelAndView tmav) {
         boolean customDepositFormRequired = false;
         if (TargetInstance.STATE_ENDORSED.equals(ti.getState())) {
@@ -356,9 +345,9 @@ public class TargetInstanceResultHandler extends TabHandler {
                     String customDepositFormURL = response.getUrlForCustomDepositForm();
 
                     // Will be needed to access the Rosetta interface
-                    DigitalAssetStoreClient dasClient = getDASClient();
-                    InTrayManagerImpl inTrayManager = getInTrayManager();
-
+                    ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
+                    DigitalAssetStoreClient dasClient = ctx.getBean(DigitalAssetStoreClient.class);
+                    InTrayManagerImpl inTrayManager = ctx.getBean(InTrayManagerImpl.class);
 
                     req.getSession().setAttribute("dasPort", Integer.toString(dasClient.getPort()));
                     req.getSession().setAttribute("dasHost", dasClient.getHost());
@@ -382,25 +371,5 @@ public class TargetInstanceResultHandler extends TabHandler {
             }
         }
         tmav.addObject("customDepositFormRequired", customDepositFormRequired);
-    }
-
-    private DigitalAssetStoreClient getDASClient() {
-        if (digitalAssetStoreClient == null) {
-            ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
-            digitalAssetStoreClient = ctx.getBean(DigitalAssetStoreClient.class);
-        }
-        return digitalAssetStoreClient;
-    }
-
-    private InTrayManagerImpl getInTrayManager() {
-        if (inTrayManager == null) {
-            ApplicationContext ctx = ApplicationContextFactory.getApplicationContext();
-            inTrayManager = ctx.getBean(InTrayManagerImpl.class);
-        }
-        return inTrayManager;
-    }
-
-    public void setHarvestAgentManager(HarvestAgentManager harvestAgentManager) {
-        this.harvestAgentManager = harvestAgentManager;
     }
 }

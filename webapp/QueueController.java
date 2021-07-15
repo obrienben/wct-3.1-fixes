@@ -24,19 +24,23 @@ import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.propertyeditors.CustomNumberEditor;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.PropertySource;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.ServletRequestDataBinder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.InitBinder;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.servlet.ModelAndView;
 import org.webcurator.common.ui.CommandConstants;
 import org.webcurator.common.ui.Constants;
 import org.webcurator.common.util.DateUtils;
 import org.webcurator.core.agency.AgencyUserManager;
 import org.webcurator.core.common.Environment;
+import org.webcurator.core.coordinator.WctCoordinator;
 import org.webcurator.core.exceptions.WCTRuntimeException;
-import org.webcurator.core.harvester.coordinator.HarvestCoordinator;
 import org.webcurator.core.scheduler.TargetInstanceManager;
 import org.webcurator.core.util.AuthUtil;
 import org.webcurator.core.util.CookieUtils;
@@ -62,10 +66,11 @@ import java.util.*;
  *
  * @author nwaight
  */
+@SuppressWarnings("all")
 @Controller
 @Scope(BeanDefinition.SCOPE_SINGLETON)
 @Lazy(false)
-@RequestMapping(path = {"/curator/ti","/curator/ti/","/curator/target/queue.html"})
+@PropertySource(value = "classpath:wct-webapp.properties")
 public class QueueController {
 	private Logger log = LoggerFactory.getLogger(getClass());
 
@@ -77,7 +82,7 @@ public class QueueController {
 	private TargetInstanceManager targetInstanceManager;
 	/** The harvest coordinator for looking at the harvesters. */
 	@Autowired
-	private HarvestCoordinator harvestCoordinator;
+	private WctCoordinator wctCoordinator;
 	/** the WCT global environment settings. */
 	@Autowired
 	@Qualifier("environmentWCT")
@@ -118,7 +123,7 @@ public class QueueController {
 		return processFilter(aReq, aResp, null, bindingResult);
 	}
 
-	@GetMapping
+	@RequestMapping(value = "/curator/target/queue.html", method = RequestMethod.GET)
 	public ModelAndView showForm(HttpServletRequest aReq, HttpServletResponse aResp)
 			throws Exception {
 		return showForm(aReq, aResp, null);
@@ -139,7 +144,7 @@ public class QueueController {
 		session.removeAttribute(Constants.GBL_SESS_EDIT_MODE);
 	}
 
-	@PostMapping
+	@RequestMapping(value = "/curator/target/queue.html", method = RequestMethod.POST)
 	protected ModelAndView processFormSubmission(HttpServletRequest aReq, HttpServletResponse aResp, @ModelAttribute TargetInstanceCommand command,
 												 BindingResult bindingResult) throws Exception {
 		if (command == null || command.getCmd() == null) {
@@ -303,7 +308,7 @@ public class QueueController {
 			futureScheduleCount.put(targetOid, targetInstanceManager.countQueueLengthForTarget(targetOid));
 		}
 
-		aCmd.setQueuePaused(harvestCoordinator.isQueuePaused());
+		aCmd.setQueuePaused(wctCoordinator.isQueuePaused());
 
 		mav.addObject(TargetInstanceCommand.MDL_INDICATORS, indicators);
 		mav.addObject(TargetInstanceCommand.MDL_INSTANCES, instances);
@@ -385,20 +390,22 @@ public class QueueController {
 				browseUrls.put(tiOid, null);
 			}
 		}
+
+		//TODO
 		if (thumbnailRendererName.equals("ACCESSTOOL") && lastDisplayableResult != null) {
-			HarvestResourceDTO hRsr = null;
-			try {
-				hRsr = targetInstanceManager.getHarvestResourceDTO(lastDisplayableResult.getOid(), seed);
-			} catch (Exception e) {
-				log.debug("Multiple resource instances found for seed {}, ti: {}.  Using first instance.", seed, tiOid);
-				Map<String, HarvestResource> resources = lastDisplayableResult.getResources();
-				hRsr = resources.get(seed).buildDTO();
-			}
-			if (hRsr != null) {
-				browseUrls.put(tiOid, harvestResourceUrlMapper.generateUrl(lastDisplayableResult, hRsr));
-			} else {
-				log.warn("Cannot find seed '{}' in harvest result ({}).", seed, lastDisplayableResult.getOid());
-			}
+//			HarvestResourceDTO hRsr = null;
+//			try {
+//				hRsr = targetInstanceManager.getHarvestResourceDTO(lastDisplayableResult.getOid(), seed);
+//			} catch (Exception e) {
+//				log.debug("Multiple resource instances found for seed {}, ti: {}.  Using first instance.", seed, tiOid);
+//				Map<String, HarvestResource> resources = lastDisplayableResult.getResources();
+//				hRsr = resources.get(seed).buildDTO();
+//			}
+//			if (hRsr != null) {
+//				browseUrls.put(tiOid, harvestResourceUrlMapper.generateUrl(lastDisplayableResult, hRsr));
+//			} else {
+//				log.warn("Cannot find seed '{}' in harvest result ({}).", seed, lastDisplayableResult.getOid());
+//			}
 		}
 	}
 
@@ -643,9 +650,9 @@ public class QueueController {
 				hr.setState(HarvestResult.STATE_ENDORSED);
 			} else if (hr.getState() != HarvestResult.STATE_REJECTED) {
 				hr.setState(HarvestResult.STATE_REJECTED);
-				harvestCoordinator.removeIndexes(hr);
+				wctCoordinator.removeIndexes(hr);
 			}
-			targetInstanceManager.save((ArcHarvestResult) hr);
+			targetInstanceManager.save((HarvestResult) hr);
 		}
 
 		targetInstanceManager.save(ti);
@@ -669,11 +676,11 @@ public class QueueController {
 								"No rejection reason specified, but this is a required field.  Please create one if no rejection reasons are configured.");
 					} else {
 						hr.setRejReason(rejReason);
-						harvestCoordinator.removeIndexes(hr);
+						wctCoordinator.removeIndexes(hr);
 					}
 				}
 
-				targetInstanceManager.save((ArcHarvestResult) hr);
+				targetInstanceManager.save((HarvestResult) hr);
 			}
 		}
 
@@ -803,7 +810,7 @@ public class QueueController {
 	private ModelAndView processPause(HttpServletRequest aReq, HttpServletResponse aResp, TargetInstanceCommand aCmd,
 									  BindingResult bindingResult) {
 		TargetInstance ti = targetInstanceManager.getTargetInstance(aCmd.getTargetInstanceId());
-		harvestCoordinator.pause(ti);
+		wctCoordinator.pause(ti);
 
 		return processFilter(aReq, aResp, null, bindingResult);
 	}
@@ -814,7 +821,7 @@ public class QueueController {
 	private ModelAndView processResume(HttpServletRequest aReq, HttpServletResponse aResp, TargetInstanceCommand aCmd,
 									   BindingResult bindingResult) {
 		TargetInstance ti = targetInstanceManager.getTargetInstance(aCmd.getTargetInstanceId());
-		harvestCoordinator.resume(ti);
+		wctCoordinator.resume(ti);
 
 		return processFilter(aReq, aResp, null, bindingResult);
 	}
@@ -825,7 +832,7 @@ public class QueueController {
 	private ModelAndView processAbort(HttpServletRequest aReq, HttpServletResponse aResp, TargetInstanceCommand aCmd,
 									  BindingResult bindingResult) {
 		TargetInstance ti = targetInstanceManager.getTargetInstance(aCmd.getTargetInstanceId());
-		harvestCoordinator.abort(ti);
+		wctCoordinator.abort(ti);
 
 		return processFilter(aReq, aResp, null, bindingResult);
 	}
@@ -836,13 +843,13 @@ public class QueueController {
 	private ModelAndView processStop(HttpServletRequest aReq, HttpServletResponse aResp, TargetInstanceCommand aCmd,
 									 BindingResult bindingResult) {
 		TargetInstance ti = targetInstanceManager.getTargetInstance(aCmd.getTargetInstanceId());
-		harvestCoordinator.stop(ti);
+		wctCoordinator.stop(ti);
 
 		return processFilter(aReq, aResp, null, bindingResult);
 	}
 
-	public void setHarvestCoordinator(HarvestCoordinator harvestCoordinator) {
-		this.harvestCoordinator = harvestCoordinator;
+	public void setWctCoordinator(WctCoordinator wctCoordinator) {
+		this.wctCoordinator = wctCoordinator;
 	}
 
 	public void setEnvironment(Environment environment) {

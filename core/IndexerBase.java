@@ -1,6 +1,7 @@
 package org.webcurator.core.store;
 
-import java.io.*;
+import java.io.File;
+import java.io.FilenameFilter;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
@@ -11,93 +12,111 @@ import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
-import org.webcurator.core.harvester.coordinator.HarvestCoordinatorPaths;
+import org.webcurator.core.coordinator.WctCoordinatorPaths;
 import org.webcurator.core.rest.AbstractRestClient;
+import org.webcurator.core.rest.RestClientResponseHandler;
+import org.webcurator.core.util.WebServiceEndPoint;
 import org.webcurator.domain.model.core.HarvestResultDTO;
 
 // TODO Note that the spring boot application needs @EnableRetry for the @Retryable to work.
 public abstract class IndexerBase extends AbstractRestClient implements RunnableIndex {
-    private static final Log log = LogFactory.getLog(IndexerBase.class);
+	private static final Log log = LogFactory.getLog(IndexerBase.class);
 
-    private boolean defaultIndexer = false;
-    private Mode mode = Mode.INDEX;
+	private WebServiceEndPoint wsEndPoint;
+	private boolean defaultIndexer = false;
+	private Mode mode = Mode.INDEX;
+//    protected final RestTemplateBuilder restTemplateBuilder;
 
-    public class ARCFilter implements FilenameFilter {
-        public boolean accept(File dir, String name) {
-            return name.toLowerCase().endsWith(".arc") ||
-                    name.toLowerCase().endsWith(".arc.gz") ||
-                    name.toLowerCase().endsWith(".warc") ||
-                    name.toLowerCase().endsWith(".warc.gz");
-        }
-    }
+	public class ARCFilter implements FilenameFilter {
+		public boolean accept(File dir, String name) {
+			return (name.toLowerCase().endsWith(".arc") ||
+					name.toLowerCase().endsWith(".arc.gz") ||
+					name.toLowerCase().endsWith(".warc") ||
+					name.toLowerCase().endsWith(".warc.gz"));
+		}
+	}
 
-    public IndexerBase() {
-        super();
-    }
+	public IndexerBase() {
+		this(new RestTemplateBuilder());
+	}
+
+	public IndexerBase(RestTemplateBuilder restTemplateBuilder) {
+		this("http", "localhost", 8080, restTemplateBuilder);
+	}
+
+	public IndexerBase(String scheme, String host, int port, RestTemplateBuilder restTemplateBuilder) {
+		super(scheme, host, port, restTemplateBuilder);
+		restTemplateBuilder.errorHandler(new RestClientResponseHandler());
+	}
 
 
-    public IndexerBase(String baseUrl, RestTemplateBuilder restTemplateBuilder) {
-        super(baseUrl, restTemplateBuilder);
-    }
+	protected IndexerBase(IndexerBase original) {
+		this(original.wsEndPoint.getSchema(), original.wsEndPoint.getHost(), original.wsEndPoint.getPort(), original.restTemplateBuilder);
+		this.defaultIndexer = original.defaultIndexer;
+		this.wsEndPoint = original.wsEndPoint;
+	}
 
-    protected IndexerBase(IndexerBase original) {
-        super(original.baseUrl, original.restTemplateBuilder);
-        this.defaultIndexer = original.defaultIndexer;
-    }
+	protected abstract HarvestResultDTO getResult();
 
-    protected abstract HarvestResultDTO getResult();
+	@Override
+	public void setMode(Mode mode) {
+		this.mode = mode;
+	}
 
-    @Override
-    public void setMode(Mode mode) {
-        this.mode = mode;
-    }
+	@Override
+	public void run() {
+		Long harvestResultOid = null;
+		try {
+			harvestResultOid = begin();
+			if (mode == Mode.REMOVE) {
+				removeIndex(harvestResultOid);
+			} else {
+				indexFiles(harvestResultOid);
+				markComplete(harvestResultOid);
+			}
+		} finally {
+			synchronized (Indexer.lock) {
+				Indexer.removeRunningIndex(getName(), harvestResultOid);
+			}
+		}
+	}
 
-    @Override
-    public void run() {
-        Long harvestResultOid = null;
-        try {
-            harvestResultOid = begin();
-            if (mode == Mode.REMOVE) {
-                removeIndex(harvestResultOid);
-            } else {
-                indexFiles(harvestResultOid);
-                markComplete(harvestResultOid);
+	@Override
+	public final void markComplete(Long harvestResultOid) {
 
-            }
-        } finally {
-            synchronized (Indexer.lock) {
-                Indexer.removeRunningIndex(getName(), harvestResultOid);
-            }
-        }
-    }
+		synchronized (Indexer.lock) {
+			if (Indexer.lastRunningIndex(this.getName(), harvestResultOid)) {
+				log.info("Marking harvest result for job " + getResult().getTargetInstanceOid() + " as ready");
+				finaliseIndex(harvestResultOid);
 
-    @Override
-    public final void markComplete(Long harvestResultOid) {
+				log.info("Index for job " + getResult().getTargetInstanceOid() + " is now ready");
+			}
 
-        synchronized (Indexer.lock) {
-            if (Indexer.lastRunningIndex(this.getName(), harvestResultOid)) {
-                log.info("Marking harvest result for job " + getResult().getTargetInstanceOid() + " as ready");
-                finaliseIndex(harvestResultOid);
+			Indexer.removeRunningIndex(getName(), harvestResultOid);
+		}
+	}
 
-                log.info("Index for job " + getResult().getTargetInstanceOid() + " is now ready");
-            }
+	@Retryable(maxAttempts = Integer.MAX_VALUE, backoff = @Backoff(delay = 30_000L))
+	protected void finaliseIndex(Long harvestResultOid) {
+		RestTemplate restTemplate = restTemplateBuilder.build();
 
-            Indexer.removeRunningIndex(getName(), harvestResultOid);
-        }
-    }
+		UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(WctCoordinatorPaths.FINALISE_INDEX));
 
-    @Retryable(maxAttempts = Integer.MAX_VALUE, backoff = @Backoff(delay = 30_000L))
-    protected void finaliseIndex(Long harvestResultOid) {
-        RestTemplate restTemplate = restTemplateBuilder.build();
+		Map<String, Long> pathVariables = ImmutableMap.of("harvest-result-oid", harvestResultOid);
+		restTemplate.postForObject(uriComponentsBuilder.buildAndExpand(pathVariables).toUri(),
+				null, Void.class);
+	}
 
-        UriComponentsBuilder uriComponentsBuilder = UriComponentsBuilder.fromHttpUrl(getUrl(HarvestCoordinatorPaths.FINALISE_INDEX));
+	@Override
+	public void removeIndex(Long harvestResultOid) {
+		//Default implementation is to do nothing
+	}
 
-        Map<String, Long> pathVariables = ImmutableMap.of("harvest-result-oid", harvestResultOid);
-        restTemplate.postForObject(uriComponentsBuilder.buildAndExpand(pathVariables).toUri(), null, String.class);
-    }
+	public void setWsEndPoint(WebServiceEndPoint wsEndPoint) {
+		this.wsEndPoint = wsEndPoint;
+	}
 
-    @Override
-    public void removeIndex(Long harvestResultOid) {
-        //Default implementation is to do nothing
-    }
+	public WebServiceEndPoint getWsEndPoint() {
+		return wsEndPoint;
+	}
 }
